@@ -1,0 +1,13 @@
+# Turn on rewrite engine and redirect broken requests to K2F
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	RewriteCond %{REQUEST_FILENAME} !-l
+	RewriteCond %{REQUEST_FILENAME} !-f
+	RewriteCond %{REQUEST_FILENAME} !-d
+	RewriteRule .* index.php?k2fhandleroute [L,QSA]
+</IfModule>
+
+# Protect against potential unknown intrusion
+<IfModule !mod_rewrite.c>
+	# TODO: write an appropriate error message.
+</IfModule>

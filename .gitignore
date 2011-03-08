@@ -1,0 +1,11 @@
+# Dropbox stuff #
+#################
+.dropbox.cache/
+.dropbox
+
+# OS generated files #
+######################
+.DS_Store?
+ehthumbs.db
+Icon?
+Thumbs.db
