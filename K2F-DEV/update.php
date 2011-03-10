@@ -19,6 +19,7 @@
 	(defined('ABS_K2F') && file_exists(ABS_K2F)) or die('ABS_K2F is wrong.');
 	(defined('REL_WWW')) or die('REL_WWW is wrong.');
 	(defined('REL_K2F')) or die('REL_K2F is wrong.');
+	
 	// todo: more precondition checks go here, to ensure all requirements are met
 
 	// calculate initial url
