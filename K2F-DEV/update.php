@@ -1,4 +1,5 @@
 <?php
+
 	/**
 	 * This is the main update script for K2F, providing an all-in-one update system.
 	 * <b>IMPORTANT:</b> Simply running this script won't work.
