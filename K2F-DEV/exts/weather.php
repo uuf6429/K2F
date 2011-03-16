@@ -160,10 +160,23 @@
 				$stncnd[49] = trim($stncnd[49][isset($stncnd[49][1]) ? 1 : 0]);
 				// set condition to unavailable of not set
 				if(!isset($conditions[$stncnd[49]])){
-					// send notification if weather condition not found
-					$headers = "From: noreply@{$_SERVER['SERVER_NAME']}\r\nReply-To: noreply@{$_SERVER['SERVER_NAME']}\r\nX-Mailer: PHP/".phpversion();
-					@mail('paul@keen-advertising.com', 'Unexpected Weather Parameter on '.$_SERVER['SERVER_NAME'], 'There is a missing weather condition: "'.$stncnd[49].'"', $headers);
-					$stncnd[49] = 'na';
+					if($stncnd[49]!=''){
+						// send notification if weather condition not found
+						$headers = "From: noreply@{$_SERVER['SERVER_NAME']}\r\nReply-To: noreply@{$_SERVER['SERVER_NAME']}\r\nX-Mailer: PHP/".phpversion();
+						@mail('paul@keen-advertising.com', 'Unexpected Weather Parameter on '.$_SERVER['SERVER_NAME'], 'There is a missing weather condition: "'.$stncnd[49].'" (Station).', $headers);
+						$stncnd[49] = 'na';
+					}else{
+						$stncnd[49] = explode('-', str_replace('_', ' ', strtolower($weather->current_conditions->condition['data'])));
+						$stncnd[49] = trim($stncnd[49][isset($stncnd[49][1]) ? 1 : 0]);
+						if(!isset($conditions[$stncnd[49]])){
+							if($stncnd[49]!=''){
+								// send notification if weather condition not found
+								$headers = "From: noreply@{$_SERVER['SERVER_NAME']}\r\nReply-To: noreply@{$_SERVER['SERVER_NAME']}\r\nX-Mailer: PHP/".phpversion();
+								@mail('paul@keen-advertising.com', 'Unexpected Weather Parameter on '.$_SERVER['SERVER_NAME'], 'There is a missing weather condition: "'.$stncnd[49].'" (Google).', $headers);
+								$stncnd[49] = 'na';
+							}else $stncnd[49] = 'na';
+						}
+					}
 				}
 				self::$temperature    = (float)$stncnd[4];
 				self::$wind_degrees   = (float)$stncnd[3];

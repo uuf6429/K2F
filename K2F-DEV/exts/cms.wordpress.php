@@ -703,7 +703,7 @@
 //			ob_start();
 			get_header();
 //			echo str_ireplace('<title>','<title>'.CmsHost_wordpress::title().' - ',ob_get_clean());
-			?><div id="container"><?php echo $content; ?></div><?php
+			echo $content;
 			get_footer();
 			die;
 		}

@@ -173,7 +173,7 @@
 		 * @return boolean True if installed, false otherwise.
 		 */
 		public static function installed($appname){
-			return file_exists(CFG::get('ABS_K2F').'apps/'.Security::filename($class));
+			return file_exists(CFG::get('ABS_K2F').'apps/'.Security::filename($appname));
 		}
 		/**
 		 * Loads an application from file system.

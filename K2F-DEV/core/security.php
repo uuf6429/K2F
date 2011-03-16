@@ -255,7 +255,7 @@
 				if(!(  ((ord($orig{$i})>=48) && (ord($orig{$i})<=57))			// numbers
 					|| ((ord($orig{$i})>=97) && (ord($orig{$i})<=122))			// lowercase
 					|| ((ord($orig{$i})>=65) && (ord($orig{$i})<=90))			// uppercase
-					|| ($orig{$i}=='_')))										// unerscore
+					|| ($orig{$i}=='_')))										// underscore
 					$orig{$i}=$replace;
 			return $orig;
 		}

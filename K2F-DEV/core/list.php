@@ -74,4 +74,61 @@
 		}
 	}
 
+	/**
+	 * This class is used to manage an array (key=>value pairs) in a
+	 * case-insensitive manner. For example, you can't have "tel" and "Tel" in
+	 * the array at the same time.
+	 */
+	class CaseInsensitiveArray {
+		protected $ref=null;
+		/**
+		 * Class instance constructor.
+		 * @param array $array The array to wrap.
+		 */
+		public function __construct(&$array){
+			$this->ref=&$array;
+		}
+		/**
+		 * Get a specified key's value.
+		 * @param string $name Key name.
+		 * @param mixed $default Default value (for non-existent keys).
+		 * @return mixed The key's value or default value.
+		 */
+		public function get($name,$default=null){
+			$name=strtolower($name);
+			foreach($this->ref as $k=>$v)
+				if(strtolower($k)==$name)
+					return $v;
+			return $default;
+		}
+		/**
+		 * Set a specified key's value.
+		 * @param string $name Key name.
+		 * @param mixed $value Key's new value.
+		 */
+		public function set($name,$value){
+			$this->rem($name);
+			$this->ref[$name]=$value;
+		}
+		/**
+		 * Remove key given its name.
+		 * @param string $name The key's name.
+		 */
+		public function rem($name){
+			$name=strtolower($name);
+			foreach($this->ref as $k=>$v)
+				if(strtolower($k)==$name)
+					unset($this->ref[$k]);
+		}
+	}
+
+	/**
+	 * Returns a case insensitive object wrapper for array.
+	 * @param array $array Original array.
+	 * @return CaseInsensitiveArray The wrapper object.
+	 */
+	function NoCaseArray(&$array){
+		return new CaseInsensitiveArray($array);
+	}
+
 ?>
