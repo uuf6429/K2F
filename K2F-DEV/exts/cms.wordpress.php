@@ -497,6 +497,7 @@
 			</html><?php
 		}
 		public function wysiwyg_paginate($content){
+			$content=do_shortcode($content);
 			// code from: %wordpress\wp-includes\query.php
 			$tag='<!--nextpage-->';
 			return explode($tag,str_replace(array("\n$tag\n","\n$tag","$tag\n"),$tag,$content));

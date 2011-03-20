@@ -34,6 +34,7 @@
 	 * @author Christian Sciberras
 	 * @version 19/09/2010
 	 *          31/12/2010 - Added $ignoreChars parameter to Security::filename().
+	 *          18/03/2011 - Method `stoident` should perform better now.
 	 */
 	class Security {
 		/**
@@ -251,12 +252,14 @@
 		 * @return string The new string.
 		 */
 		public static function stoident($orig,$replace='_'){
-			for($i=0; $i<strlen($orig); $i++)
-				if(!(  ((ord($orig{$i})>=48) && (ord($orig{$i})<=57))			// numbers
-					|| ((ord($orig{$i})>=97) && (ord($orig{$i})<=122))			// lowercase
-					|| ((ord($orig{$i})>=65) && (ord($orig{$i})<=90))			// uppercase
-					|| ($orig{$i}=='_')))										// underscore
+			for($i=0; $i<strlen($orig); $i++){
+				$o=ord($orig{$i});
+				if(!(  (($o>=48) && ($o<=57))			// numbers
+					|| (($o>=97) && ($o<=122))			// lowercase
+					|| (($o>=65) && ($o<=90))			// uppercase
+					|| ($orig{$i}=='_')))				// underscore
 					$orig{$i}=$replace;
+			}
 			return $orig;
 		}
 		/**

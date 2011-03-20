@@ -381,6 +381,14 @@
 			echo $this->mtd('getCenter').'.lng()';
 		}
 		/**
+		 * Returns javascript code which can be used to get the map's current zoom level.
+		 * <br><b>Must be called after map was rendered!</b>
+		 * @return string Javascript code which returns map zoom.
+		 */
+		public function get_zoom(){
+			echo $this->mtd('getZoom');
+		}
+		/**
 		 * Pan (move) map viewport to a lat/long position.
 		 * <br><b>Must be called after map was rendered!</b>
 		 * @param string $x Latitude position.
