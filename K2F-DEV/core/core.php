@@ -196,7 +196,7 @@
 				if((is_string($k) && stripos($k,'failure:')!==false) || (is_string($v) && stripos($v,'failure:')!==false))$mode='error';
 				if((is_string($k) && stripos($k,'fatal:')!==false)   || (is_string($v) && stripos($v,'fatal:')  !==false))$mode='error';
 			}
-			switch($logmode){
+			switch($logmode.CFG::get('DEBUG_UNBUFFERED','')){
 				case 'html':
 					$result.='<div style="color:#FFF;background:#000;font-family:\'Lucida Console\';font-size:11px;padding:4px;">';
 						foreach(func_get_args() as $arg)

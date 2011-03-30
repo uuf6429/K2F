@@ -1,7 +1,21 @@
 <?php defined('K2F') or die;
 
-	uses('core/system.php','core/mime.php');
+	/**
+	 * These are some classes to aid PHP developers in making use of the WKHTMLTOX executables.
+	 * @copyright 2010 Covac Software
+	 * @author Christian Sciberras
+	 * @version
+	 *   22/03/2010 - Initial implementation.<br>
+	 *   31/03/2010 - Fixed protected fields, IP instead domain, pages from multiple sources (thanks to Adam and Pierino).<br>
+	 *   16/05/2010 - Identified certain return error codes (thanks Pat Brooks).
+	 *   17/08/2010 - Anand, Chris - Added support for custom arguments (the functions args_add, args_remove and args_clear).
+	 *   01/01/2011 - Rewritten the class from scratch.
+	 *   25/02/2011 - Identified error exit code for when libraries on windows are not found (thanks to Mrugendra Bhure).
+	 *   21/03/2011 - _pipeExec hotfix (in K2F as well) to fix large output crash (thanks to Michal Charemza).
+	 */
 
+	uses('core/system.php','core/mime.php');
+	
 	/**
 	 * The base class for WKHTMLTOX system. Do not call or instantiate this class directly.
 	 * @copyright 2010 Covac Software
@@ -19,6 +33,10 @@
 		 * Source is from a URL.
 		 */
 		const SRC_URL  = 1;
+		/**
+		 * Source is from a local HTML file.
+		 */
+		const SRC_FILE = 2;
 
 		/**
 		 * Rendered data is pushed to client as a (forced) download.
@@ -105,7 +123,7 @@
 		 * @param string $suffix (Optional) Some text added at the end of file (such as file extension).
 		 */
 		protected static function tmp($prefix='',$suffix=''){
-			return System::temporary(System::TMP_FILE,sys_get_temp_dir(),$prefix,$suffix,true);
+			return System::temporary(System::TMP_FILE,sys_get_temp_dir(),$prefix,$suffix,false);
 		}
 		/**
 		 * Builds and returns the command line string for execution.
@@ -122,8 +140,16 @@
 		 * @param mixed $source The source (value depends on type).
 		 */
 		public function set_source($type,$source){
-			$this->type=(int)$type;
-			$this->source=$source;
+			if($type==self::SRC_FILE){
+				$this->type=self::SRC_URL;
+				$this->source=escapeshellarg(str_replace('\\','/','file:///'.$source));
+			}elseif($type==self::SRC_HTML){
+				$this->type=(int)$type;
+				$this->source=$source; // later on this gets saved to file and replaced with file path
+			}else{
+				$this->type=(int)$type;
+				$this->source=escapeshellarg($source);
+			}
 		}
 		/**
 		 * Performs the conversion (aka rendering).
@@ -139,6 +165,9 @@
 				trigger_error('WKHTMLTOX error: program returned empty result.');
 			// handle execution return codes (only 0 means success).
 			switch($this->result['return']){
+				case 126:
+					trigger_error('WKHTMLTOX system error 126: target file not executable (execution failure).');
+					return false;
 				case 7:
 					trigger_error('WKHTMLTOX system error 7: malformed executable (execution failure).');
 					return false;
@@ -584,7 +613,7 @@
 			// Handle different source types
 			if($this->type==self::SRC_HTML){
 				file_put_contents($tmp,$this->source);
-				$this->source='file:///'.$tmp;
+				$this->source=escapeshellarg('file:///'.$tmp);
 			}
 			// Generate cmd options
 			$cmd=(self::os()!=='-win' ? self::exe('wkhtmltopdf') : 'cd '.escapeshellarg(dirname(self::exe('wkhtmltopdf'))).' && '.basename(self::exe('wkhtmltopdf')));
@@ -607,7 +636,7 @@
 			}
 			if($this->zoom!==null)$cmd.=' --zoom '.(float)$this->zoom;
 			// Return generated cmd
-			return $cmd.' --output-format pdf --enable-local-file-access --no-outline '.escapeshellarg($this->source).' -';
+			return $cmd.' --output-format pdf --enable-local-file-access --no-outline '.$this->source.' -';
 		} //                               '-- maybe make it an option?
 
 		/// PUBLIC METHODS ///
@@ -741,6 +770,39 @@
 					trigger_error('WKHTMLTOX error: unsupported or unrecognized $mode value passed to output().');
 					return false;
 			}
+		}
+	}
+	
+	class WKPDF_MULTI extends WKPDF {
+		
+		/// PUBLIC METHODS ///
+		
+		/**
+		 * Do not call directly.
+		 * @ignore
+		 */
+		public function set_source($type, $source){
+			die('Calling set_source() not allowed for WKPDF_MULTI class.');
+		}
+
+		/**
+		 * Set the render source (eg: url or html).
+		 * @param integer $type Type of source (see SRC_* constants).
+		 * @param mixed $source The source (value depends on type).
+		 */
+		public function add_source($type,$source){
+			if($type==self::SRC_HTML){
+				$type=self::SRC_URL;
+				$file=str_replace('\\','/','file:///'.self::tmp('out','.html'));
+				@file_put_contents($file,$source);
+				$source=$file;
+			}elseif($type==self::SRC_FILE){
+				$type=self::SRC_URL;
+				$source=str_replace('\\','/','file:///'.$source);
+			}
+			if($type==self::SRC_URL)
+				$this->source.=($this->source!='' ? ' ' : '').escapeshellarg($source);
+			$this->type=self::SRC_URL;
 		}
 	}
 

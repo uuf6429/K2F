@@ -13,6 +13,7 @@
 	jimport('joomla.database.database');
 	jimport('joomla.plugin.plugin');
 	jimport('joomla.html.parameter');
+	jimport( 'joomla.html.editor' );
 
 	/**
 	 * CMS host interface for joomla.
@@ -118,14 +119,16 @@
 		 * @param string The action button to translate.
 		 */
 		protected static function _make_joom_button($action){
+			$name=strtolower($action);
 			$translate=array(
-				'add'=>'addNewX',
-				'new'=>'addNewX',
-				'create'=>'addNewX',
-				'edit'=>'editListX',
-				'manage'=>'editListX',
-				'delete'=>'deleteListX',
-				'remove'=>'deleteListX',
+				0=>'config',
+				'add'=>'new',
+				'new'=>'new',
+				'create'=>'new',
+				'edit'=>'edit',
+				'manage'=>'edit',
+				'delete'=>'delete',
+				'remove'=>'delete',
 				'publish'=>'publish',
 				'unpublish'=>'unpublish',
 				'update'=>'apply',
@@ -133,51 +136,180 @@
 				'save'=>'save',
 				'help'=>'help'
 			);
-			$name=strtolower($action);
-			isset($translate[$name])
-				? call_user_func(array('JToolBarHelper',$translate[$name]),$action)
-				: JToolBarHelper::customX($action,'config','config',$action,true,true);
+			$icon=isset($translate[$name]) ? $translate[$name] : $translate[0];
+			JToolBarHelper::customX($name,$icon,$icon,$action,$name!='new',false);
 		}
-		public function adminlist($rows=array(),$colid='id',$columns=array(),$options=array(),$actions=array(),$handler='',$emptymsg='No items found'){
+		protected static $pagecounter=0;
+		public function adminlist($rows=array(),$colkey='id',$columns=array(),$options=array(),$actions=array(),$handler='',$emptymsg='No items found'){
 			// add global actions buttons to toolbar
 			foreach($actions as $action)self::_make_joom_button($action);
-			?><table>
-				<!-- Free Text Filter [left] -- Options Filter [right] -->
-			</table><table class="adminlist" cellspacing="1">
-				<thead>
-					<tr><?php
-						if($colid=='id')echo '<th width="20"> # </th>';
-						if(in_array('multiselect',$options))echo '<th width="20"><input type="checkbox" onclick="checkAll('.count($rows).');" value="" name="toggle"></th>';
-						if(in_array('singleselect',$options))echo '<th width="20"><input type="radio" onclick="checkAll(0);" value="" name="toggle"></th>';
-						foreach($columns as $key=>$column)echo '<th><a title="Click to sort by this column" href="javascript:tableOrdering(\'c.title\',\'desc\',\'\');">'.Security::snohtml($column).'</a></th>';
-					?></tr>
-				</thead><tfoot>
-					<tr><td colspan="<?php echo count($columns)+($colid=='id' ? 2 : 1); ?>"><?php
-						// TODO: Generate pagination
-					?></td></tr>
-				</tfoot><tbody>
-					<tr><?php
-						/*foreach($rows as $id=>$row){
-							if($colid=='id')echo $row->id;
-							if(in_array('singleselect',$options))
-								echo '<td align="center"><input type="checkbox" onclick="isChecked(this.checked);" value="1" name="cid[]" id="cb0"><input type="radio" value="'.Security::snohtml($id).'" name="checked[]"/></td>';
-							if(in_array('multiselect',$options))
-								echo '<td align="center"><input type="checkbox" value="'.Security::snohtml($id).'" name="checked[]"/></td>';
-							foreach($columns as $colid=>$colname)
-								echo '<td>'.(
-									function_exists($handler)
-										? call_user_func($handler,$id,$row,$colid,isset($row->$colid) ? $row->$colid : null)
-										: Security::snohtml(isset($row->$colid) ? $row->$colid : 'null')
-								).'</td>';
-						}*/
-					?></tr>
-				</tbody>
-			</table><table cellspacing="0" cellpadding="4" border="0" align="center">
-				<!-- Icons Legend -->
-			</table><?php
+			?><div class="k2f-adminlist" id="k2f-al-<?php echo self::$pagecounter; ?>">
+				<table width="100%">
+					<tr>
+						<td align="left"><!--{TODO: Free Text Search}--></td>
+						<td align="right"><!--{TODO: Options Filter}--></td>
+					</tr>
+				</table><table class="adminlist" cellspacing="1">
+					<thead>
+						<tr><?php
+							if($colkey=='id')echo '<th width="20"> # </th>';
+							if(in_array('multiselect',$options))echo '<th width="20"><input type="checkbox" onclick="k2f_checkall(this);" value="" name="toggle" id="cb-'.self::$pagecounter.'"></th>';
+							if(in_array('singleselect',$options))echo '<th width="20">&nbsp;</th>';
+							foreach($columns as $key=>$column)echo '<th style="'.(is_array($column) ? $column[1] : '').'"><!--a title="Click to sort by this column" href="javascript:tableOrdering(\'c.title\',\'desc\',\'\');"-->'.Security::snohtml(is_array($column) ? $column[0] : $column).'<!--/a--></th>';
+						?></tr>
+					</thead><tfoot>
+						<tr><td colspan="<?php echo count($columns)+($colkey=='id' ? 2 : 1); ?>"><?php
+							// TODO: Generate pagination
+						?></td></tr>
+					</tfoot><tbody><?php
+						$c=0;
+						foreach($rows as $id=>$row){
+							?><tr class="row<?php echo $c%2; ?>"><?php
+								echo '<td>'.Security::snohtml($row->$colkey.'').'</td>';
+								if(in_array('singleselect',$options))
+									echo '<td align="center"><input type="radio" onclick="k2f_checked(this);" value="'.Security::snohtml($row->$colkey.'').'" name="checked[]" id="cb-'.self::$pagecounter.'-'.Security::snohtml($row->$colkey.'').'"/></td>';
+								if(in_array('multiselect',$options))
+									echo '<td align="center"><input type="checkbox" onclick="k2f_checked(this);" value="'.Security::snohtml($row->$colkey.'').'" name="checked[]" id="cb-'.self::$pagecounter.'-'.Security::snohtml($row->$colkey.'').'"/></td>';
+								foreach($columns as $colid=>$colname){
+									$res=(count($handler)>0 && $handler!='')
+										? call_user_func($handler,$row->$colkey,$row,$colid,isset($row->$colid) ? $row->$colid : null)
+										: Security::snohtml(isset($row->$colid) ? $row->$colid : 'null');
+									echo '<td>'.($res=='' ? '&nbsp;' : $res).'</td>';
+								}
+							?></tr><?php
+							$c++;
+						}
+					if(!$c)
+						echo '<tr><td style="font-style:italic; text-align:center; padding:32px;" colspan="'.(count($columns)+2).'">'.$emptymsg.'</td></tr>';
+					?></tbody>
+				</table><table cellspacing="0" cellpadding="4" border="0" align="center">
+					<!-- Icons Legend -->
+				</table>
+			</div><?php
 		}
 		public function adminlist_begin($icon,$title,$options=array(),$actions=array(),$callback=array()){
-			self::$_adminlist=true;
+			if(self::$pagecounter==0){
+				?><script type="text/javascript">
+					function k2f_popup(url){
+						jQuery('#keenfbh').attr('href',url).click();
+					}
+					var k2fajax=null;
+					function k2f_submit(elem,action){
+						// continue...
+						if(action!='refresh' && action!='close' && action!='cancel'){
+							var el=jQuery(elem).parents('form');
+							if(el.length>0){
+								el=el[0];
+								// show "loading..." message
+								var vars=jQuery(el).serialize();
+								jQuery(el).html(
+									'<p>Loading, please wait...</p>'+
+									'<input type="button" value="Cancel" style="font-size:16px;" onclick="k2f_cancel();">'+
+									'<br/>&nbsp;'
+								);
+								// do it! do it! do it!
+								k2fajax=jQuery.post(el.action,vars+'&k2f-action='+encodeURIComponent(action),function(data){
+									// show resulting message
+									jQuery('#fancybox-content').html(data);
+									if(jQuery('#fancybox-content').length==0)
+										jQuery('#k2f-nopopup').html(data);
+									// refresh page (well, parts of it)
+									k2f_refresh();
+								});
+							}
+						}else{
+							jQuery('#k2f-nopopup').hide();
+							jQuery('.k2f-adminlist').show();
+							if(action=='refresh')k2f_refresh();
+							jQuery.fancybox.close();
+						}
+					}
+					function k2f_cancel(){
+						if(k2fajax && k2fajax.readyState!=0){
+							k2fajax.abort();
+							k2fajax=null;
+						}
+						jQuery.fancybox.close();
+					}
+					function k2f_refresh(){
+						// this is a bit of a hack:
+						// - first, it gets the new content of this page (GET/POST location.href)
+						// - converts the returned HTML to DOM using jQuery
+						// - replaces all <tbody>s of current page with the new HTML using DOM
+						// todo: maybe do this via POST for cases like pagination
+						jQuery.get(location.href,function(data){
+							// get list of checked checkboxes with an id
+							var cbs=[];
+							jQuery('input[type=checkbox]:checked').each(function(){ cbs.push(jQuery(this).attr('id')) });
+							// overwrite each adminlist with new content
+							jQuery('.k2f-adminlist').each(function(){
+								jQuery(this).html(jQuery(data).find('#'+jQuery(this).attr('id')).html());
+							});
+							// rehook checkboxes using code from joomla
+							k2f_rehookcbs();
+							// tick back checkboxes
+							for(var i=0; i<cbs.length; i++)if(cbs[i]!='')jQuery('#'+cbs[i]).attr('checked',true);
+						});
+					}
+					function k2f_checkall(el){
+						jQuery(el).parents('form').find('input[name!=toggle]:checkbox').attr('checked',el.checked);
+					}
+					function k2f_checked(el){
+						var cbA=jQuery(el).parents('form').find('input[name!=toggle]:checkbox').length;
+						var cbC=jQuery(el).parents('form').find('input[name!=toggle]:checkbox:checked').length;
+						jQuery(el).parents('form').find('input[name=toggle]:checkbox').attr('checked',cbC==cbA);
+					}
+					function k2f_apply(action,tbl){
+						var ids='';
+						jQuery('#k2f-al-'+(tbl.replace('k2f-al-','')*1)+' input[name="checked\\[\\]"]:checked').each(function(id,el){
+							ids+='&k2f-checked[]='+encodeURIComponent(el.value);
+						});
+						return k2f_popup(location.href+'<?php
+								echo (count($callback)==2) ? Ajax::url($callback[0],$callback[1],'&') : '&k2f-notajax';
+							?>&k2f-table='+(tbl.replace('k2f-al-','')*1)+'&k2f-action='+encodeURIComponent(action)+ids);
+					}
+					function k2f_applyNP(action,tbl){
+						var ids='';
+						jQuery('#k2f-al-'+(tbl.replace('k2f-al-','')*1)+' input[name="checked\\[\\]"]:checked').each(function(id,el){
+							ids+='&k2f-checked[]='+encodeURIComponent(el.value);
+						});
+						var url=location.href+'<?php
+							echo (count($callback)==2) ? Ajax::url($callback[0],$callback[1],'&') : '&k2f-notajax';
+							?>&k2f-table='+(tbl.replace('k2f-al-','')*1)+'&k2f-action='+encodeURIComponent(action)+ids;
+						jQuery('.k2f-adminlist').hide();
+						jQuery.get(url,function(data){
+							jQuery('#k2f-nopopup').html(data);
+							jQuery('#k2f-nopopup').show();
+						});
+						return false;
+					}
+					function k2f_action(id,tbl){
+						var act=jQuery('#k2f-al-ba-'+id).val();
+						/*var res=window['k2f-options-'+tbl].indexOf('nopopup:'+act)!=-1
+							? k2f_applyNP(act,tbl) :*/ k2f_apply(act,tbl);
+						jQuery('#k2f-al-ba-'+id).val('');
+						jQuery('#k2f-al-bb-'+id).attr('disabled',true);
+						return res;
+					}
+					function k2f_edit(link,id,action){
+						var tbl=jQuery(jQuery(link).parents('.k2f-adminlist')[0]).attr('id').replace('k2f-al-','')*1;
+						var url=location.href;
+						if(url[url.length-1]=='#')url=url.substr(0,url.length-1);
+						url+='<?php // <- hash-in-url hotfix
+							echo (count($callback)==2) ? Ajax::url($callback[0],$callback[1],'&') : '&k2f-notajax';
+							?>&k2f-table='+tbl+'&k2f-action='+encodeURIComponent(action)+'&k2f-checked[]='+(id*1);
+						/*if(window['k2f-options-'+tbl].indexOf('nopopup:'+action)!=-1){
+							jQuery('.k2f-adminlist').hide();
+							jQuery.get(url,function(data){
+								jQuery('#k2f-nopopup').html(data);
+								jQuery('#k2f-nopopup').show();
+							});
+							return false;
+						}else*/ return k2f_popup(url);
+					}
+				</script><?php
+			}
+			self::$_adminlist=true; self::$pagecounter++;
 			if(!is_array($options))$options=array($options);
 			if(!is_array($actions))$actions=array($actions);
 			if(in_array('allowadd',$options))array_unshift($actions,'new');
@@ -188,14 +320,16 @@
 			// add global options buttons
 			foreach($actions as $action)self::_make_joom_button($action);
 			// write beginning of wrap form
-			?><form name="adminForm" method="post" action="index.php">
+			?><form name="adminForm" method="post" action="">
 				<!--joomla stuf-->
 				<input type="hidden" name="option" value="com_k2f" />
 				<input type="hidden" name="task" value="" />
 				<input type="hidden" name="boxchecked" value="0" />
 				<!--ajax call stuff-->
-				<input type="hidden" id="k2f-cls" name="k2f-cls" value="<?php echo Security::snohtml($callback[0]); ?>"/>
-				<input type="hidden" id="k2f-mtd" name="k2f-mtd" value="<?php echo Security::snohtml($callback[1]); ?>"/><?php
+				<?php if(count($callback)){ ?>
+					<input type="hidden" id="k2f-cls" name="k2f-cls" value="<?php echo Security::snohtml($callback[0]); ?>"/>
+					<input type="hidden" id="k2f-mtd" name="k2f-mtd" value="<?php echo Security::snohtml($callback[1]); ?>"/>
+				<?php }
 		}
 		public function adminlist_end(){
 			?><div id="k2f-nopopup" style="display:none;"><!----></div></form><?php
@@ -245,15 +379,47 @@
 					echo $hint=='' ? '&nbsp;' : '<p class="howto">'.Security::snohtml($hint).'</p>';
 			?></form><?php
 		}
+		protected static $_jk_cfg_tbl_checked=false;
+		protected static function _k2f_joom_cfg_tbl_name(){
+			// return correct table name
+			return CFG::get('DB_PRFX').'k2f_config';
+		}
+		protected static function k2f_joom_cfg_tbl_check(){
+			// install table if it ain't there yet
+			self::$_jk_cfg_tbl_checked=true;
+			// check and install table
+			$tbl=self::_k2f_joom_cfg_tbl_name();
+			if(!Database::db()->table_exists($tbl)){
+				Database::db()->table_create($tbl);
+				Database::db()->cols_add($tbl,'key','text');
+				Database::db()->cols_add($tbl,'val','text');
+				return;
+			}
+			// check and install columns
+			$col=Database::db()->cols_all($tbl);
+			if(!in_array('key',$col))
+				Database::db()->cols_add($tbl,'val','text');
+			if(!in_array('val',$col))
+				Database::db()->cols_add($tbl,'val','text');
+		}
 		public function config_get($key){
-			if(!self::$params)
-				self::$params=new JParameter(JPluginHelper::getPlugin('system','K2F')->params);
-			return self::$params->get('k2fp_'.$key,'');
+			if(!self::$_jk_cfg_tbl_checked)self::k2f_joom_cfg_tbl_check();
+			$tbl=self::_k2f_joom_cfg_tbl_name();
+			$val=Database::db()->rows_load($tbl,'`key`="'.Security::escape($key).'"');
+			if(!isset($val[0]) || !isset($val[0]->val))return '';
+			return $val[0]->val;
 		}
 		public function config_set($key,$value){
-			if(!self::$params)
-				self::$params=new JParameter(JPluginHelper::getPlugin('system','K2F')->params);
-			self::$params->set('k2fp_'.$key,$value);
+			if(!self::$_jk_cfg_tbl_checked)self::k2f_joom_cfg_tbl_check();
+			$tbl=self::_k2f_joom_cfg_tbl_name();
+			$val=Database::db()->rows_load($tbl,'`key`="'.Security::escape($key).'"');
+			if(count($val)){
+				// update
+				Database::db()->rows_update($tbl,(object)array('key'=>$key,'val'=>$value),'key');
+			}else{
+				// insert
+				Database::db()->rows_insert($tbl,(object)array('key'=>$key,'val'=>$value));
+			}
 		}
 		public function is_admin(){
 			$user=&JFactory::getUser();
@@ -344,6 +510,11 @@
 		public function register_url($redirect=''){
 			return JRoute::_('index.php?option=com_user&view=register&return='.urlencode(base64_encode($redirect)));
 		}
+		public function wysiwyg($name,$html,$width,$height){
+			$editor=&JFactory::getEditor();
+			$params=array('smilies'=>false,'style'=>true,'layer'=>false,'table'=>false,'clear_entities'=>false);
+			echo $editor->display($name,$html,$width,$height,'0','0',true,$params);
+		}
 		public function wysiwyg_paginate($content){
 			// code from: %joomla/plugins/content/pagebreak.php
 			$regex='#<hr([^>]*?)class=(\"|\')system-pagebreak(\"|\')([^>]*?)\/*>#iU'; $replc='[K2FJR'.mt_Rand().']';
@@ -421,14 +592,16 @@
 		if(isset($_REQUEST['k2facm'])){
 			// show page content
 			ob_start(); $found=false;
-			?><a href="" id="keenfbh" style="display:none;">fbh</a>
+			?><a href="" id="keenfbh" style="display:none;"><!----></a>
 			<script type="text/javascript">
 				var ksbo=submitbutton;
 				submitbutton=function(task){
+					var cbs=[];
+					jQuery.each(jQuery('input:checked'),function(i,e){ if(jQuery(e).val()!='')cbs.push('k2f-checked[]='+jQuery(e).val()); });
 					k2f_popup((<?php echo @json_encode(Ajax::url('thek2fclass','thek2fmethod')); ?>)
 						.replace('thek2fclass',encodeURIComponent(jQuery('#k2f-cls').val()))
 						.replace('thek2fmethod',encodeURIComponent(jQuery('#k2f-mtd').val()))
-						+'&k2f-table=1&k2f-action='+encodeURIComponent(task)+'&random='+Math.random());
+						+'&k2f-table=1&k2f-action='+encodeURIComponent(task)+'&'+cbs.join('&')+'&random='+Math.random());
 				}
 				jQuery(document).ready(function(){
 					jQuery('#keenfbh').fancybox({
@@ -438,84 +611,10 @@
 						"padding":1
 					});
 				});
-				function k2f_popup(url){
-					jQuery('#keenfbh').attr('href',url).click();
-				}
-				var k2fajax=null;
-				function k2f_submit(elem,action){
-					// continue...
-					if(action!='refresh' && action!='close' && action!='cancel'){
-						var el=jQuery(elem).parents('form');
-						if(el.length>0){
-							el=el[0];
-							// show "loading..." message
-							var vars=jQuery(el).serialize();
-							jQuery(el).html(
-								'<p>Loading, please wait...</p>'+
-								'<input type="button" value="Cancel" style="font-size:16px;" onclick="k2f_cancel();">'+
-								'<br/>&nbsp;'
-							);
-							// do it! do it! do it!
-							k2fajax=jQuery.post(el.action,vars+'&k2f-action='+encodeURIComponent(action),function(data){
-								// show resulting message
-								jQuery('#fancybox-content').html(data);
-								if(jQuery('#fancybox-content').length==0)
-									jQuery('#k2f-nopopup').html(data);
-								// refresh page (well, parts of it)
-								k2f_refresh();
-							});
-						}
-					}else{
-						jQuery('#k2f-nopopup').hide();
-						jQuery('.k2f-adminlist').show();
-						if(action=='refresh')k2f_refresh();
-						jQuery.fancybox.close();
-					}
-				}
-				function k2f_cancel(){
-					if(k2fajax && k2fajax.readyState!=0){
-						k2fajax.abort();
-						k2fajax=null;
-					}
-					jQuery.fancybox.close();
-				}
-				function k2f_refresh(){
-					// this is a bit of a hack:
-					// - first, it gets the new content of this page (GET/POST location.href)
-					// - converts the returned HTML to DOM using jQuery
-					// - replaces all <tbody>s of current page with the new HTML using DOM
-					// todo: maybe do this via POST for cases like pagination
-					jQuery.get(location.href,function(data){
-						// get list of checked checkboxes with an id
-						var cbs=[];
-						jQuery('input[type=checkbox]:checked').each(function(){ cbs.push(jQuery(this).attr('id')) });
-						// overwrite each adminlist with new content
-						jQuery('.k2f-adminlist').each(function(){
-							jQuery(this).html(jQuery(data).find('#'+jQuery(this).attr('id')).html());
-						});
-						// rehook checkboxes using code from joomla
-						k2f_rehookcbs();
-						// tick back checkboxes
-						for(var i=0; i<cbs.length; i++)if(cbs[i]!='')jQuery('#'+cbs[i]).attr('checked',true);
-					});
-				}
-				function k2f_rehookcbs(){
-/*
-					jQuery("thead, tfoot").find(":checkbox").unbind('click');
-					jQuery("thead, tfoot").find(":checkbox").click(function(){
-						var checked=jQuery(this).attr("checked") ? "checked" : "";
-						jQuery(this).closest("table").children("tbody").filter(":visible")
-							.children().children(".check-column").find(":checkbox").attr("checked", function() {
-								return jQuery(this).closest("tr").is(":hidden") ? "" : checked;
-							});
-						jQuery(this).closest("table").children("thead, tfoot").filter(":visible")
-							.children().children(".check-column").find(":checkbox").attr("checked", function() {
-								return checked;
-							})
-					});
-*/
-				}
 			</script><?php
+			// BEGIN joomla hack to make wysiwyg editors work
+			ob_start(); JFactory::getEditor()->display('k2fdummy','','10','10','20','20',true,array()); ob_get_clean();
+			// END joomla hack to make wysiwyg editors work
 			foreach(CmsHost_joomla::$menus['admin']['func'] as $handler)
 				if($_REQUEST['k2facm']==implode('.',$handler)){
 					if(class_exists($handler[0])){

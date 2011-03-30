@@ -56,7 +56,39 @@
 		 * @param string$action The desired action (edit, delete, etc).
 		 */
 		public static function fire_action($id,$html,$action){              //           .- speaking of paranoid ;-)
-			return '<a href="javascript:;" onclick="k2f_edit(this,'.(int)$id.','.Security::snohtml(@json_encode($action)).');">'.$html.'</a>';
+			return '<a href="javascript:;" style="white-space:nowrap;" onclick="k2f_edit(this,'.(int)$id.','.Security::snohtml(@json_encode($action)).');">'.$html.'</a>';
+		}
+		/**
+		 * Maps a URL to a URL structure to get a specific part of the URL.
+		 * @param string $structure The URL's model structure.
+		 * @param string $url The real URL to read parts from.
+		 * @param array $parts The parts the URL is made up of.
+		 * @param string $part The part to retrieve from the URL.
+		 * @param mixed $default Value returned when matching fails (defaults to null).
+		 * @return mixed Either the URL part or the $default value (if matching failed).
+		 * @example <code>
+		 *            // echoes '45'
+		 *            echo url('/events/%venue%/%id%-%name%/','/events/Malta/45-Event/',array('venue','name'),'id');
+		 *          </code>
+		 */
+		public static function struct_parse($structure,$url,$parts=array(),$part='',$default=null){
+			$vars=array();
+			foreach($parts as $k)$vars['%'.$k.'%']='[^/]+';
+			$vars['%'.$part.'%']='([^/]+?)';
+			$reg='('.str_replace(array_keys($vars),array_values($vars),preg_quote(trim($structure,'/'))).')/?$';
+			return preg_match('#'.$reg.'#',$url,$matches) ? array_pop($matches) : $default;
+		}
+		/**
+		 * Generates a regular expression given URL structure and variable parts.
+		 * <br/>Works best with cms->rewrite_url(<regex>);
+		 * @param string $structure The URL's model structure.
+		 * @param array $parts The parts the URL is made up of.
+		 * @return string The generated regular expression, without a starting and ending hash (#).
+		 */
+		public static function struct_apply($structure,$parts=array()){
+			$vars=array();
+			foreach($parts as $k)$vars['%'.$k.'%']='[^/]+';
+			return '('.str_replace(array_keys($vars),array_values($vars),preg_quote(trim($structure,'/'))).')/?$';
 		}
 	}
 	

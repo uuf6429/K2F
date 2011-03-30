@@ -82,7 +82,7 @@
 			if($headers)curl_setopt($ch,CURLOPT_HTTPHEADER,$headers);
 			if($timeout!=-1)curl_setopt($ch,CURLOPT_TIMEOUT_MS,$timeout);
 			if($cookies){
-				foreach($cookies as $k=>$v)$cookies[$k]=$k.'='.urlencode($v);
+				foreach($cookies as $k=>$v)$cookies[$k]=$k.'='.urlencode(is_scalar($v) ? $v.'' : '');
 				curl_setopt($ch,CURLOPT_COOKIE,implode('; ',$cookies));
 			}
 			curl_setopt($ch,CURLOPT_HEADER,false);

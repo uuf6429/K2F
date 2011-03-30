@@ -36,7 +36,7 @@
 							?><th class="manage-column check-column" scope="col">&nbsp;</th><?php
 						}
 						foreach($columns as $key=>$column){
-							?><th class="manage-column" scope="col"><?php echo Security::snohtml($column); ?></th><?php
+							?><th class="manage-column" style="<?php echo is_array($column) ? $column[1] : ''; ?>" scope="col"><?php echo Security::snohtml(is_array($column) ? $column[0] : $column); ?></th><?php
 						}
 					?></tr><?php
 				}
@@ -85,7 +85,7 @@
 					<tbody><?php
 						$n=0;
 						foreach($rows as $row){
-							?><tr class="<?php echo $n%2==0 ? 'alternate' : ''; ?>"><?php
+							?><tr id="<?php echo 'k2frow'.self::$pagecounter.'-'.$row->$colkey; ?>" class="<?php echo $n%2==0 ? 'alternate' : ''; ?>"><?php
 								$c=($n==0 ? 'checked="checked" ' : '');
 								if(in_array('singleselect',$options))
 									echo '<th class="check-column" scope="row"><input type="radio" value="'.Security::snohtml($row->$colkey).'" '.$c.'name="checked[]" id="k2fcb'.self::$pagecounter.'-'.$n.'"/></th>';
@@ -124,12 +124,15 @@
 		public function config_set($key,$value){
 			update_option('k2f_'.$key,$value);
 		}
+		protected static $nocallback=true;
 		public function adminlist_begin($icon,$title,$options=array(),$actions=array(),$callback=array()){
+			self::$nocallback=!count($callback);
 			// fix for shorthand (passing a string instead of array)
 			if(!is_array($options))$options=array($options);
 			if(!is_array($actions))$actions=array($actions);
 			// one-time pass
 			if(self::$pagecounter==0){
+				if(self::$nocallback)echo '<form method="post" action="">';
 				echo '<div class="wrap">';
 				?><style type="text/css">#k2f-nopopup #media-upload { display: none; }</style><script type="text/javascript">
 					function k2f_popup(url){
@@ -142,7 +145,7 @@
 					}
 					function k2f_apply(action,tbl){
 						var ids='';
-						jQuery('#k2f-al-'+tbl+' input[name="checked\\[\\]"]:checked').each(function(id,el){
+						jQuery('#k2f-al-'+(tbl.replace('k2f-al-','')*1)+' input[name="checked\\[\\]"]:checked').each(function(id,el){
 							ids+='&k2f-checked[]='+encodeURIComponent(el.value);
 						});
 						return k2f_popup(location.href+'<?php
@@ -151,7 +154,7 @@
 					}
 					function k2f_applyNP(action,tbl){
 						var ids='';
-						jQuery('#k2f-al-'+tbl+' input[name="checked\\[\\]"]:checked').each(function(id,el){
+						jQuery('#k2f-al-'+(tbl.replace('k2f-al-','')*1)+' input[name="checked\\[\\]"]:checked').each(function(id,el){
 							ids+='&k2f-checked[]='+encodeURIComponent(el.value);
 						});
 						var url=location.href+'<?php
@@ -364,6 +367,7 @@
 			if(self::$pagecounter>0){
 				self::$pagecounter=0;
 				echo '<div id="k2f-nopopup" style="display:none;"><!----></div></div>';
+				if(self::$nocallback)echo '</form>';
 			}
 		}
 		protected static $hints=array();
@@ -653,9 +657,28 @@
 	function k2f_wp_guest_menus(){
 		Events::call('on_guest_menu');
 	}
-	function k2f_wp_head(){
+	function k2f_wp_admin_head(){
 		// this hotfix fixes a bug where when we load the media, "Screen Options" box malfunctions.
 		?><style type="text/css">#screen-meta .hidden { height: auto; width: auto; }</style><?php
+		// backend thickbox path hotfix
+		?><script type="text/javascript">
+			if(typeof tb_pathToImage!='string')
+				var tb_pathToImage="<?php echo CFG::get('REL_WWW'); ?>../wp-includes/js/thickbox/loadingAnimation.gif";
+			if(typeof tb_closeImage!='string')
+				var tb_closeImage = "<?php echo CFG::get('REL_WWW'); ?>../wp-includes/js/thickbox/tb-close.png";
+		</script><?php
+		// call event handlers
+		Events::call('on_head');
+	}
+	function k2f_wp_head(){
+		// backend thickbox path hotfix
+		?><script type="text/javascript">
+			if(typeof tb_pathToImage!='string')
+				var tb_pathToImage="<?php echo CFG::get('REL_WWW'); ?>wp-includes/js/thickbox/loadingAnimation.gif";
+			if(typeof tb_closeImage!='string')
+				var tb_closeImage = "<?php echo CFG::get('REL_WWW'); ?>wp-includes/js/thickbox/tb-close.png";
+		</script><?php
+		// call event handlers
 		Events::call('on_head');
 	}
 	function k2f_wp_init(){
@@ -714,7 +737,7 @@
 	add_action('admin_menu','k2f_wp_admin_menus');
 	add_action('admin_menu','k2f_wp_registered_menus');
 	add_action('admin_menu','k2f_wp_guest_menus');
-	add_action('admin_head','k2f_wp_head');
+	add_action('admin_head','k2f_wp_admin_head');
 	add_action('wp_head',   'k2f_wp_head');
 	add_action('init',      'k2f_wp_init');
 
@@ -724,6 +747,6 @@
 	wp_enqueue_style('thickbox');
 	// the conditional is a hotfix for the wordpress media uploader style
     if(basename($_SERVER['PHP_SELF'])!='media-upload.php')
-		wp_enqueue_style('media'); // see related hotfix in function k2f_wp_haad
+		wp_enqueue_style('media'); // see related hotfix in function k2f_wp_head
 
 ?>

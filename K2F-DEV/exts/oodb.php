@@ -91,7 +91,7 @@
 							}elseif(is_float($this->$prop)){
 								$this->$prop=(float)$value;
 							}elseif(is_bool($this->$prop)){
-								$this->$prop=($value!==null && $value!==chr(0));
+								$this->$prop=($value!==null && $value!==chr(0) && $value!=='0' && $value!==0);
 							}else $this->$prop=$value; // cannot determine data type...
 						}else $this->$prop=$value; // no such property in subclass...
 					}
@@ -119,7 +119,7 @@
 								}elseif(is_float($this->$prop)){
 									$this->$prop=(float)$value;
 								}elseif(is_bool($this->$prop)){
-									$this->$prop=($value!==null && $value!==chr(0) && $value!='0');
+									$this->$prop=($value!==null && $value!==chr(0) && $value!=='0' && $value!==0);
 								}else $this->$prop=$value; // cannot determine data type...
 							}else $this->$prop=$value; // no such property in subclass...
 						}
