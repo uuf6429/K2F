@@ -59,7 +59,7 @@
 		}
 		public function table_exists($table){
 			self::_run_query('SHOW TABLES LIKE "'.Security::escape($table).'"');
-			return (self::affectedRows()==1);
+			return (self::rows_affected()==1);
 		}
 		public function table_remove($table){
 			return $this->_run_query('DROP TABLE `'.Security::escape($table).'`');

@@ -133,9 +133,9 @@
 		 * Similar to handle, this one renders the output and dies right here.
 		 */
 		public static function render(){
-			$result='('.self::handle(true).')';
-			header('Location:',true);                 // this is a hotfix for cmses that redirect, like wordpress (+ works on PHP <5.3)
-			header('HTTP/1.0 200 OK',true,200);       // hotfix for location and http://bugs.php.net/bug.php?id=25044
+			$result=self::handle(true);
+			if(function_exists('header_remove'))header_remove('Location');		// hotfix for location getting set for some dumb reason
+			header('HTTP/1.0 200 OK',true,200);									// hotfix for location and http://bugs.php.net/bug.php?id=25044
 			die($result);
 		}
 		/**
