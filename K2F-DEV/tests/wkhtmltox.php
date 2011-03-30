@@ -175,6 +175,37 @@ class WKDBG extends WKCORE { // debugger class extends WKCORE class to gain acce
 			self::asert(false,'',$e);
 		}
 
+		// let's adobify some sites... :)
+		try {
+			self::assert($pdf=new WKPDF_MULTI(),'Test PDF_MULTI Render: Started.','Test PDF_MULTI Render: Start failed.');
+			$pdf->add_source(WKPDF::SRC_URL,'http://www.google.com/');
+			$pdf->add_source(WKPDF::SRC_HTML,
+				'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+				<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+				<head><title>TEST TEST TEST</title></head><body><h1>Local Content!!!</h1></body></html>');
+			$pdf->add_source(WKPDF::SRC_URL,'http://www.facebook.com/');
+			$pdf->set_margins('0px','0px','0px','0px');
+			self::assert($pdf->render(),'Test PDF_MULTI Render: Rendering....done!','Test PDF_MULTI Render: Rendering....failed!');
+			$file=CFG::get('ABS_K2F').'libs/wkhtmltox/demo-'.time().'.pdf';
+			self::assert($pdf->output(self::OUT_SAVE,$file),'Test PDF_MULTI Render: Finished successfully.','Test PDF_MULTI Render: Output failed!');
+			echo '<iframe src="'.str_replace(CFG::get('ABS_K2F'),CFG::get('REL_K2F'),$file).'" width="1024" height="400"></iframe>';
+		} catch (Exception $e) {
+			self::asert(false,'',$e);
+		}
+
+		// render PDF for some heavyweight website...
+		try {
+			self::assert($pdf=new WKPDF(),'Test PDF Render: Started.','Test PDF Render: Start failed.');
+			$pdf->set_source(WKPDF::SRC_URL,'http://epicagency.net/');
+			$pdf->set_margins('0px','0px','0px','0px');
+			self::assert($pdf->render(),'Test PDF Render: Rendering....done!','Test PDF Render: Rendering....failed!');
+			$file=CFG::get('ABS_K2F').'libs/wkhtmltox/demo-'.time().'.pdf';
+			self::assert($pdf->output(self::OUT_SAVE,$file),'Test PDF Render: Finished successfully.','Test PDF Render: Output failed!');
+			echo '<iframe src="'.str_replace(CFG::get('ABS_K2F'),CFG::get('REL_K2F'),$file).'" width="1024" height="400"></iframe>';
+		} catch (Exception $e) {
+			self::asert(false,'',$e);
+		}
+
 	}
 	/// SATISFY ABSTRACT METHODS ///
 	public function cmd($tmp){}

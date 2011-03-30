@@ -15,10 +15,57 @@
 		 * @return array Array of "stdout", "stderr" and "return".
 		 */
 		public static function execute($cmd,$stdin=null,$log=true){
-			$proc=proc_open($cmd,array(array('pipe','r'),array('pipe','w'),array('pipe','w')),$pipes);
+			$proc=proc_open($cmd,array(0=>array('pipe','r'),1=>array('pipe','w'),2=>array('pipe','w')),$pipes);
 			fwrite($pipes[0],$stdin);					fclose($pipes[0]);
+/// old code >>
 			$stdout=stream_get_contents($pipes[1]); 	fclose($pipes[1]);
 			$stderr=stream_get_contents($pipes[2]);		fclose($pipes[2]);
+/// << old | new >>
+//			// See: http://code.google.com/p/wkhtmltopdf/wiki/IntegrationWithPhp  (Oct 19, 2010)
+//			// From http://php.net/manual/en/function.proc-open.php#89338
+//			$read_output = $read_error = false;
+//			$buffer_len  = $prev_buffer_len = 0;
+//			$ms          = 10;
+//			$stdout      = '';		$stderr      = '';
+//			$read_output = true;	$read_error  = true;
+//			stream_set_blocking($pipes[1], 0);
+//			stream_set_blocking($pipes[2], 0);
+//			while($read_error || $read_output){
+//				if($read_output){
+//					if(feof($pipes[1])){
+//						fclose($pipes[1]);
+//						$read_output=false;
+//					}else{
+//						$str=fgets($pipes[1], 1024);
+//						$len=strlen($str);
+//						if($len){
+//							$stdout.=$str;
+//							$buffer_len+=$len;
+//						}
+//					}
+//				}
+//				if($read_error){
+//					if(feof($pipes[2])){
+//						fclose($pipes[2]);
+//						$read_error=false;
+//					}else{
+//						$str=fgets($pipes[2], 1024);
+//						$len=strlen($str);
+//						if($len){
+//							$stderr.=$str;
+//							$buffer_len+=$len;
+//						}
+//					}
+//				}
+//				if($buffer_len>$prev_buffer_len){
+//					$prev_buffer_len=$buffer_len;
+//					$ms=10;
+//				}else{
+//					usleep($ms*1000); // sleep for $ms milliseconds
+//					if($ms<160)$ms=$ms*2;
+//				}
+//			}
+/// << new code
 			$return=proc_close($proc);
 			if($return!=0 && $log)xlog('Error: Program execution returned failure.',$stdout,$stderr,$return);
 			return array( 'stdout'=>$stdout, 'stderr'=>$stderr, 'return'=>$return );
@@ -176,6 +223,5 @@ xlog('Error: CPU bitness check on OSX is not yet functional.',$res);
 		foreach($GLOBALS['K2F-TFD']['d'] as $dir)@rmdir($dir);
 	}
 	register_shutdown_function('_tmp_cleanup');
-
 
 ?>
