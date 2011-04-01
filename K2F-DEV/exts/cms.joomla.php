@@ -261,8 +261,10 @@
 			if(self::$pagecounter==0){
 				?><script type="text/javascript">
 					var k2f_refresh_ajax=null;
+					var k2f_pgnation_page=0;
 					function k2f_pgnation_limit(el){
 						var l=el.value*1;
+						var s=jQuery(el).parents('.k2f-adminlist').find('.k2f-search-search').val();
 						// stop any previous searches and show throbber
 						if(k2f_refresh_ajax && k2f_refresh_ajax.readyState!=0){
 							k2f_refresh_ajax.abort();
@@ -270,14 +272,16 @@
 						}
 						jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').css('visibility','visible');
 						// do the search request
-						var url=location.href.replace('k2f-limit','k2f-ign');
-						url+='&k2f-limit='+l;
+						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-limit','k2f-ign').replace('k2f-page','k2f-ign');
+						url+='&k2f-limit='+l+'&k2f-page='+k2f_pgnation_page+'&k2f-search='+encodeURIComponent(s);
 						k2f_refresh_ajax=k2f_refresh(url,function(){
 							jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').css('visibility','hidden');
 						});
 					}
 					function k2f_pgnation_page(el,p){
 						var l=jQuery(el).parents('.k2f-adminlist').find('.k2f-page-limit').val()*1;
+						var s=jQuery(el).parents('.k2f-adminlist').find('.k2f-search-search').val();
+						k2f_pgnation_page=p;
 						// stop any previous searches and show throbber
 						if(k2f_refresh_ajax && k2f_refresh_ajax.readyState!=0){
 							k2f_refresh_ajax.abort();
@@ -285,13 +289,15 @@
 						}
 						jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').css('visibility','visible');
 						// do the search request
-						var url=location.href.replace('k2f-page','k2f-ign').replace('k2f-limit','k2f-ign');
-						url+='&k2f-limit='+l+'&k2f-page='+p;
+						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-limit','k2f-ign').replace('k2f-page','k2f-ign');
+						url+='&k2f-limit='+l+'&k2f-page='+k2f_pgnation_page+'&k2f-search='+encodeURIComponent(s);
 						k2f_refresh_ajax=k2f_refresh(url,function(){
 							jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').css('visibility','hidden');
 						});
 					}
 					function k2f_search_submit(el){
+						var l=jQuery(el).parents('.k2f-adminlist').find('.k2f-page-limit').val()*1;
+						var s=jQuery(el).parents('.k2f-adminlist').find('.k2f-search-search').val();
 						// stop any previous searches and show throbber
 						if(k2f_refresh_ajax && k2f_refresh_ajax.readyState!=0){
 							k2f_refresh_ajax.abort();
@@ -299,8 +305,8 @@
 						}
 						jQuery(el).parents('.k2f-adminlist').find('.k2f-search-throbber').show();
 						// do the search request
-						var url=location.href.replace('k2f-search','k2f-ign');
-						url+='&k2f-search='+encodeURIComponent(jQuery(el).parents('.k2f-adminlist').find('.k2f-search-search').val());
+						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-limit','k2f-ign').replace('k2f-page','k2f-ign');
+						url+='&k2f-limit='+l+'&k2f-page='+k2f_pgnation_page+'&k2f-search='+encodeURIComponent(s);
 						k2f_refresh_ajax=k2f_refresh(url,function(){
 							jQuery(el).parents('.k2f-adminlist').find('.k2f-search-throbber').hide();
 						});
