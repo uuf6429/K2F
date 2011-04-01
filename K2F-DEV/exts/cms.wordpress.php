@@ -19,6 +19,30 @@
 		// render adminlist
 		protected static $pagecounter=0;
 		public function adminlist($rows=array(),$colkey='id',$columns=array(),$options=array(),$actions=array(),$handler='',$emptymsg='No items found'){
+			// perform search filter on $rows, if not empty
+			if(count($rows) && isset($_REQUEST['k2f-search']) && ($search=trim($_REQUEST['k2f-search']))!=''){
+				foreach($rows as $i=>$row){
+					$found=false;
+					foreach(get_object_vars($row) as $k=>$data)
+						if(stripos(is_scalar($data) ? ''.$data : implode('',array_values((array)$data)),$search)!==false){
+							$found=true;
+							break;
+						}
+					if(!$found)unset($rows[$i]);
+				}
+			}
+			// perform pagination, if needed
+			$p = isset($_REQUEST['k2f-page']) ? (int)$_REQUEST['k2f-page'] : 0;
+			## BEGIN wordpress bs (from: post.php and upload.php) ##
+			$media_per_page = (int) get_user_option( 'upload_per_page' );
+			if ( empty( $media_per_page ) || $media_per_page < 1 )
+				$media_per_page = 20;
+			$l = apply_filters( 'upload_per_page', $media_per_page );
+			## END wordpress bs ##
+			$t = count($rows);
+			$c = ceil($t/$l)-1;
+			$p = min($p,$c);
+			if($l>0)$rows = array_splice($rows,$p*$l,$l);
 
 			if(!function_exists('CmsHost_wp_al_cols')){
 				/**
@@ -47,9 +71,9 @@
 				 * Generates actions.
 				 * @param array $actions List of allowed actions.
 				 */
-				function CmsHost_wp_al_bulk($actions,$id,$tbl,$options){
+				function CmsHost_wp_al_bulk($actions,$id,$tbl,$options,$istop,$rows,$p,$l,$t,$c){
 					if(count($actions)==0)return;
-					?><div class="tablenav">
+					?><div class="tablenav top">
 						<div class="alignleft actions">
 							<select name="action" id="k2f-al-ba-<?php echo $id; ?>"
 								onchange="jQuery('#k2f-al-bb-<?php echo $id; ?>').attr('disabled',false);">
@@ -70,14 +94,43 @@
 							<input type="submit" id="k2f-al-bb-<?php echo $id; ?>" class="button-secondary action"
 								value="Apply" onclick="k2f_action('<?php echo $id; ?>','<?php echo $tbl; ?>');" disabled/>
 						</div>
+						<div class="tablenav-pages">
+							<img src="<?php echo Ajax::url('K2F_WP_WYSIWYG_HACK','loader'); ?>" style="display:none; margin:-2px 6px 0 0; vertical-align: middle;" width="16" height="16" alt="Loading..." class="k2f-pgnation-throbber"/>
+							<span class="displaying-num"><?php echo $t; ?> items</span>
+							<a href="javascript:;" onclick="if(!jQuery(this).is('.disabled'))k2f_pgnation_page(this,1);" title="Go to the first page" class="first-page<?php if($p==0)echo ' disabled'; ?>">&laquo;</a>
+							<a href="javascript:;" onclick="if(!jQuery(this).is('.disabled'))k2f_pgnation_page(this,<?php echo $p-1; ?>);" title="Go to the previous page" class="prev-page<?php if($p==0)echo ' disabled'; ?>">&lsaquo;</a>
+							<span class="paging-input">
+								<?php if($istop){ ?>
+									<input type="text" size="1" value="<?php echo $p+1; ?>" name="paged" title="Current page" class="current-page" onkeyup="evant=event||window.event; if(event.keyCode==13)k2f_pgnation_page(this,parseInt(value));"/>
+								<?php }else echo $p+1; ?>
+								of <span class="total-pages"><?php echo $c+1; ?></span>
+							</span>
+							<a href="javascript:;" onclick="if(!jQuery(this).is('.disabled'))k2f_pgnation_page(this,<?php echo $p+1; ?>);" title="Go to the next page" class="next-page<?php if($p==$c)echo ' disabled'; ?>">&rsaquo;</a>
+							<a href="javascript:;" onclick="if(!jQuery(this).is('.disabled'))k2f_pgnation_page(this,<?php echo $c; ?>);" title="Go to the last page" class="last-page<?php if($p==$c)echo ' disabled'; ?>">&raquo;</a>
+						</div>
+						<br class="clear"/>
 					</div><?php
 				}
 			}
 			
-			?><div class="k2f-adminlist" id="k2f-al-<?php echo self::$pagecounter; ?>"><?php
+			?><div class="k2f-adminlist" id="k2f-al-<?php echo self::$pagecounter; ?>">
+			
+			<ul class="subsubsub">
+				<li class="all"><a class="current" href="">All <span class="count">(<?php echo $t; ?>)</span></a></li>
+				<!-- New API would write stuff here -->
+			</ul>
+
+			<p class="search-box">
+				<img src="<?php echo Ajax::url('K2F_WP_WYSIWYG_HACK','loader'); ?>" style="display:none; margin:-2px 6px 0 0; vertical-align: middle;" width="16" height="16" alt="Loading..." class="k2f-search-throbber"/>
+				<label for="post-search-input" class="screen-reader-text">Search Items:</label>
+				<input type="text" value="<?php if(isset($_REQUEST['k2f-search']))echo Security::snohtml($_REQUEST['k2f-search']); ?>" name="s" class="k2f-search" id="post-search-input" onkeyup="evant=event||window.event; if(event.keyCode==13)k2f_reload(this);"/>
+				<input type="button" value="Search Items" class="button" id="search-submit" onclick="k2f_reload(this);"/>
+			</p>
+			
+			<br class="clear"/><?php
 
 			if(count($rows)>0){
-				CmsHost_wp_al_bulk($actions,self::$pagecounter.'-1',self::$pagecounter,$options);
+				CmsHost_wp_al_bulk($actions,self::$pagecounter.'-1',self::$pagecounter,$options,true,$rows,$p,$l,$t,$c);
 				?><div class="clear"></div>
 				<table cellspacing="0" class="widefat">
 					<thead><?php CmsHost_wp_al_cols(self::$pagecounter,$columns,$options); ?></thead>
@@ -86,9 +139,8 @@
 						$n=0;
 						foreach($rows as $row){
 							?><tr id="<?php echo 'k2frow'.self::$pagecounter.'-'.$row->$colkey; ?>" class="<?php echo $n%2==0 ? 'alternate' : ''; ?>"><?php
-								$c=($n==0 ? 'checked="checked" ' : '');
 								if(in_array('singleselect',$options))
-									echo '<th class="check-column" scope="row"><input type="radio" value="'.Security::snohtml($row->$colkey).'" '.$c.'name="checked[]" id="k2fcb'.self::$pagecounter.'-'.$n.'"/></th>';
+									echo '<th class="check-column" scope="row"><input type="radio" value="'.Security::snohtml($row->$colkey).'" '.($n==0 ? 'checked="checked" ' : '').'name="checked[]" id="k2fcb'.self::$pagecounter.'-'.$n.'"/></th>';
 								if(in_array('multiselect',$options))
 									echo '<th class="check-column" scope="row"><input type="checkbox" value="'.Security::snohtml($row->$colkey).'" name="checked[]" id="k2fcb'.self::$pagecounter.'-'.$n.'"/></th>';
 								foreach($columns as $colid=>$colname){
@@ -102,8 +154,8 @@
 						}
 					?></tbody>
 				</table><?php
-				CmsHost_wp_al_bulk($actions,self::$pagecounter.'-2',self::$pagecounter,$options);
-			}else echo $emptymsg;
+				CmsHost_wp_al_bulk($actions,self::$pagecounter.'-2',self::$pagecounter,$options,false,$rows,$p,$l,$t,$c);
+			}else echo '<p>'.$emptymsg.'</p>';
 			
 			?></div>&nbsp;<?php
 		}
@@ -134,7 +186,42 @@
 			if(self::$pagecounter==0){
 				if(self::$nocallback)echo '<form method="post" action="">';
 				echo '<div class="wrap">';
-				?><style type="text/css">#k2f-nopopup #media-upload { display: none; }</style><script type="text/javascript">
+				?><style type="text/css">
+					/* backend bug hotfix */
+					#k2f-nopopup #media-upload { display: none; }
+				</style><script type="text/javascript">
+					var k2f_refresh_ajax=null;
+					var k2f_page=0;
+					function k2f_pgnation_page(el,p){
+						k2f_page=p*1;
+						jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').show();
+						k2f_reload(el,function(){
+							jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').hide();
+						});
+					}
+					function k2f_search_search(el){
+						jQuery(el).parents('.k2f-adminlist').find('.k2f-search-throbber').show();
+						k2f_reload(el,function(){
+							jQuery(el).parents('.k2f-adminlist').find('.k2f-search-throbber').hide();
+						});
+					}
+					function k2f_reload(el,ondone){
+						// define and compute some variables
+						var s=jQuery(el).parents('.k2f-adminlist').find('.k2f-search').val();
+						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-page','k2f-ign');
+						url+='&k2f-search='+encodeURIComponent(s)+"&k2f-page="+k2f_page;
+						// stop existing requests
+						if(k2f_refresh_ajax && k2f_refresh_ajax.readyState!=0){
+							k2f_refresh_ajax.abort();
+							k2f_refresh_ajax=null;
+						}
+						// run new request
+						k2f_refresh_ajax=k2f_refresh(url,function(){
+							k2f_refresh_ajax=null;
+							// call callback if any
+							if(typeof ondone=='function')ondone();
+						});
+					}
 					function k2f_popup(url){
 						tb_show('',url.indexOf('?')!=-1 ? url : url+'?');
 						jQuery('#TB_window').css('overflow-y','auto'); //  big box hotfix
@@ -222,13 +309,14 @@
 						}
 						tb_remove();
 					}
-					function k2f_refresh(){
+					function k2f_refresh(url,ondone){
 						// this is a bit of a hack:
 						// - first, it gets the new content of this page (GET/POST location.href)
 						// - converts the returned HTML to DOM using jQuery
 						// - replaces all <tbody>s of current page with the new HTML using DOM
 						// todo: maybe do this via POST for cases like pagination
-						jQuery.get(location.href,function(data){
+						if(typeof url=='undefined')url=location.href;
+						return jQuery.get(url,function(data){
 							// get list of checked checkboxes with an id
 							var cbs=[];
 							jQuery('input[type=checkbox]:checked').each(function(){ cbs.push(jQuery(this).attr('id')) });
@@ -240,6 +328,8 @@
 							k2f_rehookcbs();
 							// tick back checkboxes
 							for(var i=0; i<cbs.length; i++)if(cbs[i]!='')jQuery('#'+cbs[i]).attr('checked',true);
+							// call callback if any
+							if(typeof ondone=='function')ondone();
 						});
 					}
 					function k2f_rehookcbs(){
