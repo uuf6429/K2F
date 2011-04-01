@@ -10,6 +10,14 @@
 		header('X-Frame-Options: SAMEORIGIN',true);
 		// Tell browsers that if they think an XSS attack s going on, block it.
 		header('X-XSS-Protection: 1; mode=block',true);
+		// Make use of HSTS (forces clients to use HTTPS only).
+		// @site http://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security
+		if(CFG::get('SSL_MODE')){
+			if(!isset($_SERVER['HTTPS'])){
+				header('Status-Code: 301');
+				header('Location: https://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI']);
+			}else header('Strict-Transport-Security: max-age=500');
+		}
 	}else xlog('Warning: Could not send critical headers.');
 
 	// create hmac function for PHP 5.1 and older

@@ -115,6 +115,20 @@
 			die;
 		}
 		/**
+		 * Writes file contents for various used files.
+		 */
+		public static function _file_data($name){
+			switch($name){
+				case 'loader16.gif':
+					header('Content-type: image/gif');
+					echo base64_decode('R0lGODlhEAAQAOMAAAQCBISChMTCxOTm5ERCRMzKzPz+/Ly+vOzu7Hx+fAQGBISGhMTGxOzq7FRSVMzOzCH/C05FVFNDQVBFMi4wAwEAAAAh+QQJBgAGACwAAAAAEAAQAAAESNDISau9OOvNe0VM0XCCcDAcc5RcwwhjNwiD9SzPNARJUE8FBQBQkAh6CUHB4WAshoCFZNcbOAgERwFanNIM16zhlrsImAdLBAAh+QQJBgAMACwAAAAAEAAQAIMEAgSMiozU1tS0srREQkT08vQUFhSkoqTk4uS8vrzc2tx8fnz8/vwcGhykpqTEwsQER5DJSau9OOvNu59D0wxcAwAGZ5zpNhijVCCFpTjKVDzJU08KglAgQSSOCEUgoDgICQcZzxdYLAKCJ1FGY1SvDIFjaxEsc5UIACH5BAkGAAYALAAAAAAQABAAAARH0MhJq7VvvVuLAkDBTQsILKNUmGJqZJsrMY7DyA5BOLjOuzTHwdUQDGSDQCJxtCAKAoRgGRBcBAeBURloVhjY28DIaYAblggAIfkECQYADAAsAAAAABAAEACDBAIEjIqM1NbUtLK0REJE9PL0FBYUpKKk5OLkvL683NrcfH58/P78HBocpKakxMLEBEiQyTmaGTPrBoBhiqNok9EZCqGO5GA0w6ESB6kJs2Dfjr5rikCA9WMEFotAUXJMLkFC4q6AKDwLicTDWkRoE4glVsstUsvPSQQAIfkECQYABgAsAAAAABAAEAAABErQyMmcYzObt55xBOEYjTBMhQIABSgOSRCcxrICS+UcQuILksKtkBkEYrRNR2MYmJhQEqPQiGYYAp51khUAtwaEgFEFm8/otBodAQAh+QQJBgAMACwAAAAAEAAQAIMEAgSMiozU1tS0srREQkT08vQUFhSkoqTk4uS8vrzc2tx8fnz8/vwcGhykpqTEwsQERpDJqUJQMzPlcFhLwBRIQRGo8IXFkzwmc6DEoV5IoiOSQAuZwisR29g0o5Jk0DAMkEgDAGCAaqRUa2ZgaDy14LB4TC6boREAIfkECQYABgAsAAAAABAAEAAABEvQyNkYQzObJoZhwsFo0hAkwRAKAmkIaCJUAkaaqOdmqr4bBYdj9JM4CARH0YhULhlH4tLwWDymBQVAUVguAODFsgAGdJfV63RtiAAAIfkECQYADAAsAAAAABAAEACDBAIEjIqM1NbUtLK0REJE9PL0FBYUpKKk5OLkvL683NrcfH58/P78HBocpKakxMLEBEWQyUnrLKhYW1562jYhSYmIlweiV8YyShAILxMsS1DfeR0HippE4Qi+FIQkjXVIEhyDRmOwETgFBgDAIBI4aNltbWCYWiIAOw==');
+					break;
+				default:
+					header('HTTP/1.0 404 Not Found');
+			}
+			die;
+		}
+		/**
 		 * Utility function which translates an action to a Joomla button.
 		 * @param string The action button to translate.
 		 */
@@ -140,13 +154,39 @@
 			JToolBarHelper::customX($name,$icon,$icon,$action,$name!='new',false);
 		}
 		protected static $pagecounter=0;
+		protected static $paginations=array(5,10,15,20,25,30,50,100,0);
 		public function adminlist($rows=array(),$colkey='id',$columns=array(),$options=array(),$actions=array(),$handler='',$emptymsg='No items found'){
+			// perform search filter on $rows, if not empty
+			if(count($rows) && isset($_REQUEST['k2f-search']) && ($search=trim($_REQUEST['k2f-search']))!=''){
+				foreach($rows as $i=>$row){
+					$found=false;
+					foreach(get_object_vars($row) as $k=>$data)
+						if(stripos(is_scalar($data) ? ''.$data : implode('',array_values((array)$data)),$search)!==false){
+							$found=true;
+							break;
+						}
+					if(!$found)unset($rows[$i]);
+				}
+			}
+			// perform pagination, if needed
+			$p = isset($_REQUEST['k2f-page']) ? (int)$_REQUEST['k2f-page'] : 0;
+			$l = isset($_REQUEST['k2f-limit']) ? (int)$_REQUEST['k2f-limit'] : 20;
+			$t = count($rows); $c=ceil($t/$l)-1;
+			if($l>0)$rows = array_splice($rows,$p*$l,$l);
+			$p = min($p,$c);
+			//die_r("p=$p, t=$t, l=$l, c=".ceil($t/$l));
 			// add global actions buttons to toolbar
 			foreach($actions as $action)self::_make_joom_button($action);
 			?><div class="k2f-adminlist" id="k2f-al-<?php echo self::$pagecounter; ?>">
 				<table width="100%">
 					<tr>
-						<td align="left"><!--{TODO: Free Text Search}--></td>
+						<td align="left">
+							Filter:
+							<input type="text" title="Filter by Search Term" onchange="k2f_search_submit(this);" class="text_area k2f-search-search" value="<?php if(isset($_REQUEST['k2f-search']))echo Security::snohtml($_REQUEST['k2f-search']); ?>" name="search">
+							<button onclick="return k2f_search_submit(this);" class="k2f-search-submit">Go</button>
+							<button onclick="return k2f_search_reset(this);" class="k2f-search-reset">Reset</button>
+							<img src="<?php echo Ajax::url(__CLASS__,'_file_data'); ?>&name=loader16.gif" class="k2f-search-throbber" width="16" height="16" alt="Loading..." style="display:none; margin:-4px 0 0 4px; vertical-align:middle;"/>
+						</td>
 						<td align="right"><!--{TODO: Options Filter}--></td>
 					</tr>
 				</table><table class="adminlist" cellspacing="1">
@@ -158,9 +198,39 @@
 							foreach($columns as $key=>$column)echo '<th style="'.(is_array($column) ? $column[1] : '').'"><!--a title="Click to sort by this column" href="javascript:tableOrdering(\'c.title\',\'desc\',\'\');"-->'.Security::snohtml(is_array($column) ? $column[0] : $column).'<!--/a--></th>';
 						?></tr>
 					</thead><tfoot>
-						<tr><td colspan="<?php echo count($columns)+($colkey=='id' ? 2 : 1); ?>"><?php
-							// TODO: Generate pagination
-						?></td></tr>
+						<tr><td colspan="<?php echo count($columns)+($colkey=='id' ? 2 : 1); ?>">
+							<div class="pagination">
+								<div class="limit">
+									Display #<select onchange="k2f_pgnation_limit(this);" size="1" class="inputbox k2f-page-limit" name="limit"><?php
+										foreach(self::$paginations as $n)
+											echo '<option '.($n==$l ? 'selected="selected"' : '').' value="'.$n.'">'.($n==0 ? 'all' : $n).'</option>';
+									?></select>
+								</div>
+								<?php if(count($rows)<$t){ ?>
+								<div class="button2-right<?php if($p==0)echo ' off'; ?>"><div class="start">
+									<?php if($p==0){ ?><span>Start</span><?php }else{ ?><a title="Start" href="javascript:;" onclick="k2f_pgnation_page(this,0);">Start</a><?php } ?>
+								</div></div>
+								<div class="button2-right<?php if($p==0)echo ' off'; ?>"><div class="prev">
+									<?php if($p==0){ ?><span>Prev</span><?php }else{ ?><a title="Prev" href="javascript:;" onclick="k2f_pgnation_page(this,<?php echo $p-1; ?>);">Prev</a><?php } ?>
+								</div></div>
+								<div class="button2-left">
+									<div class="page"><?php
+										for($i=max($p-4,1); $i<=min($p+5+abs(min($p-4,0)),$c+1); $i++)
+											echo $i==($p+1) ? '<span>'.$i.'</span>' :
+												'<a title="'.$i.'" href="javascript:;" onclick="k2f_pgnation_page(this,'.($i-1).');">'.$i.'</a>';
+									?></div>
+								</div>
+								<div class="button2-left<?php if($p==$c)echo ' off'; ?>"><div class="next">
+									<?php if($p==$c){ ?><span>Next</span><?php }else{ ?><a title="Next" href="javascript:;" onclick="k2f_pgnation_page(this,<?php echo $p+1; ?>);">Next</a><?php } ?>
+								</div></div>
+								<div class="button2-left<?php if($p==$c)echo ' off'; ?>"><div class="end">
+									<?php if($p==$c){ ?><span>End</span><?php }else{ ?><a title="End" href="javascript:;" onclick="k2f_pgnation_page(this,<?php echo $c; ?>);">End</a><?php } ?>
+								</div></div>
+								<div class="limit"><?php echo 'Page '.($p+1).' of '.($c+1); ?></div>
+								<?php } ?>
+								<img src="<?php echo Ajax::url(__CLASS__,'_file_data'); ?>&name=loader16.gif" class="k2f-pgnation-throbber" width="16" height="16" alt="Loading..." style="visibility:hidden; margin:3px 0 0 4px;"/>
+							</div>
+						</td></tr>
 					</tfoot><tbody><?php
 						$c=0;
 						foreach($rows as $id=>$row){
@@ -190,10 +260,61 @@
 		public function adminlist_begin($icon,$title,$options=array(),$actions=array(),$callback=array()){
 			if(self::$pagecounter==0){
 				?><script type="text/javascript">
+					var k2f_refresh_ajax=null;
+					function k2f_pgnation_limit(el){
+						var l=el.value*1;
+						// stop any previous searches and show throbber
+						if(k2f_refresh_ajax && k2f_refresh_ajax.readyState!=0){
+							k2f_refresh_ajax.abort();
+							k2f_refresh_ajax=null;
+						}
+						jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').css('visibility','visible');
+						// do the search request
+						var url=location.href.replace('k2f-limit','k2f-ign');
+						url+='&k2f-limit='+l;
+						k2f_refresh_ajax=k2f_refresh(url,function(){
+							jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').css('visibility','hidden');
+						});
+					}
+					function k2f_pgnation_page(el,p){
+						var l=jQuery(el).parents('.k2f-adminlist').find('.k2f-page-limit').val()*1;
+						// stop any previous searches and show throbber
+						if(k2f_refresh_ajax && k2f_refresh_ajax.readyState!=0){
+							k2f_refresh_ajax.abort();
+							k2f_refresh_ajax=null;
+						}
+						jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').css('visibility','visible');
+						// do the search request
+						var url=location.href.replace('k2f-page','k2f-ign').replace('k2f-limit','k2f-ign');
+						url+='&k2f-limit='+l+'&k2f-page='+p;
+						k2f_refresh_ajax=k2f_refresh(url,function(){
+							jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').css('visibility','hidden');
+						});
+					}
+					function k2f_search_submit(el){
+						// stop any previous searches and show throbber
+						if(k2f_refresh_ajax && k2f_refresh_ajax.readyState!=0){
+							k2f_refresh_ajax.abort();
+							k2f_refresh_ajax=null;
+						}
+						jQuery(el).parents('.k2f-adminlist').find('.k2f-search-throbber').show();
+						// do the search request
+						var url=location.href.replace('k2f-search','k2f-ign');
+						url+='&k2f-search='+encodeURIComponent(jQuery(el).parents('.k2f-adminlist').find('.k2f-search-search').val());
+						k2f_refresh_ajax=k2f_refresh(url,function(){
+							jQuery(el).parents('.k2f-adminlist').find('.k2f-search-throbber').hide();
+						});
+						return false; // hack to stop button from submitting form
+					}
+					function k2f_search_reset(el){
+						jQuery(el).parents('.k2f-adminlist').find('.k2f-search-search').val('');
+						k2f_search_submit(el);
+						return false; // hack to stop button from submitting form
+					}
+					var k2fajax=null;
 					function k2f_popup(url){
 						jQuery('#keenfbh').attr('href',url).click();
 					}
-					var k2fajax=null;
 					function k2f_submit(elem,action){
 						// continue...
 						if(action!='refresh' && action!='close' && action!='cancel'){
@@ -231,13 +352,14 @@
 						}
 						jQuery.fancybox.close();
 					}
-					function k2f_refresh(){
+					function k2f_refresh(url,ondone){
 						// this is a bit of a hack:
 						// - first, it gets the new content of this page (GET/POST location.href)
 						// - converts the returned HTML to DOM using jQuery
 						// - replaces all <tbody>s of current page with the new HTML using DOM
 						// todo: maybe do this via POST for cases like pagination
-						jQuery.get(location.href,function(data){
+						if(typeof url=='undefined')url=location.href;
+						return jQuery.get(url,function(data){
 							// get list of checked checkboxes with an id
 							var cbs=[];
 							jQuery('input[type=checkbox]:checked').each(function(){ cbs.push(jQuery(this).attr('id')) });
@@ -245,19 +367,21 @@
 							jQuery('.k2f-adminlist').each(function(){
 								jQuery(this).html(jQuery(data).find('#'+jQuery(this).attr('id')).html());
 							});
-							// rehook checkboxes using code from joomla
-							k2f_rehookcbs();
 							// tick back checkboxes
 							for(var i=0; i<cbs.length; i++)if(cbs[i]!='')jQuery('#'+cbs[i]).attr('checked',true);
+							// call callback if any
+							if(typeof ondone=='function')ondone();
 						});
 					}
 					function k2f_checkall(el){
 						jQuery(el).parents('form').find('input[name!=toggle]:checkbox').attr('checked',el.checked);
+						document.adminForm.boxchecked.value=el.checked ? 1 : 0;
 					}
 					function k2f_checked(el){
 						var cbA=jQuery(el).parents('form').find('input[name!=toggle]:checkbox').length;
 						var cbC=jQuery(el).parents('form').find('input[name!=toggle]:checkbox:checked').length;
 						jQuery(el).parents('form').find('input[name=toggle]:checkbox').attr('checked',cbC==cbA);
+						document.adminForm.boxchecked.value=cbC;
 					}
 					function k2f_apply(action,tbl){
 						var ids='';
@@ -522,7 +646,8 @@
 		}
 	}
 	Ajax::register('CmsHost_joomla','_jquery_fancy_box',array('name'=>'string'));
-	
+	Ajax::register('CmsHost_joomla','_file_data',array('name'=>'string'));
+
 	function k2f_joom_init(){
 		// K2F to Joomla router (rewrite handler)
 		$rules=array_merge(CmsHost_joomla::$RewriteRulesImp,CmsHost_joomla::$RewriteRules);
