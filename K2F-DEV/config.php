@@ -165,4 +165,5 @@
 	 */
 	CFG::set('REL_WWW', dirname($_SERVER['PHP_SELF']).'/');
 
+
 ?>
