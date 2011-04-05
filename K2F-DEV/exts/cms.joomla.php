@@ -163,7 +163,17 @@
 					foreach(get_object_vars($row) as $k=>$data)
 						if(stripos(is_scalar($data) ? ''.$data : implode('',array_values((array)$data)),$search)!==false){
 							$found=true;
-							break;
+							break; // performance hotfix
+						}
+					if(!$found) // if not found as normal row, try search in formatted data (the conditional is a performance fix)
+						foreach($columns as $colid=>$colname){
+							$data=strip_tags((count($handler)>0 && $handler!='')
+								? call_user_func($handler,$row->$colkey,$row,$colid,isset($row->$colid) ? $row->$colid : null)
+								: (isset($row->$colid) ? $row->$colid : ''));
+							if(stripos($data,$search)!==false){
+								$found=true;
+								break; // performance hotfix
+							}
 						}
 					if(!$found)unset($rows[$i]);
 				}
@@ -171,7 +181,8 @@
 			// perform pagination, if needed
 			$p = isset($_REQUEST['k2f-page']) ? (int)$_REQUEST['k2f-page'] : 0;
 			$l = isset($_REQUEST['k2f-limit']) ? (int)$_REQUEST['k2f-limit'] : 20;
-			$t = count($rows); $c=ceil($t/$l)-1;
+			$t = count($rows);
+			$c = ceil($t/$l)-1;
 			if($l>0)$rows = array_splice($rows,$p*$l,$l);
 			$p = min($p,$c);
 			//die_r("p=$p, t=$t, l=$l, c=".ceil($t/$l));
@@ -588,6 +599,7 @@
 		public function admin_add_submenu($parent,$name,$text,$icons,$handler){
 			self::$menus['admin']['func'][]=$handler;
 			self::$menus['admin']['menu'][$parent]['items'][]=array('name'=>$name,'text'=>$text,'icons'=>$icons,'handler'=>$handler,'items'=>array());
+			return array($parent,count(self::$menus['admin']['menu'][$parent]['items']));
 		}
 		public function client_add_menu($name,$text,$icons,$handler){
 			self::$menus['client']['func'][]=$handler;
@@ -596,6 +608,7 @@
 		public function client_add_submenu($parent,$name,$text,$icons,$handler){
 			self::$menus['client']['func'][]=$handler;
 			self::$menus['client']['menu'][$parent]['items'][]=array('name'=>$name,'text'=>$text,'icons'=>$icons,'handler'=>$handler,'items'=>array());
+			return array($parent,count(self::$menus['client']['menu'][$parent]['items']));
 		}
 		public function guest_add_menu($name,$text,$icons,$handler){
 			self::$menus['guest']['func'][]=$handler;
@@ -604,6 +617,12 @@
 		public function guest_add_submenu($parent,$name,$text,$icons,$handler){
 			self::$menus['guest']['func'][]=$handler;
 			self::$menus['guest']['menu'][$parent]['items'][]=array('name'=>$name,'text'=>$text,'icons'=>$icons,'handler'=>$handler,'items'=>array());
+			return array($parent,count(self::$menus['guest']['menu'][$parent]['items']));
+		}
+		public function url_to_menu($menu,$args=array()){
+			$handler=is_array($menu) ? self::$menus['client']['menu'][$menu[0]]['items'][$menu[0]]['handler'] : self::$menus['admin']['menu'][$menu]['handler'];
+			foreach($args as $k=>$v)$args[$k]='&'.$k.'='.urlencode($v);
+			return 'index.php?option=com_k2f&k2facm='.urlencode(implode('.',$handler)).implode('',$args);
 		}
 		public static $WriteRules=array();      // holds a list of accessible urls
 		public static $RewriteRules=array();    // holds a list of url rewriter rules

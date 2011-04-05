@@ -163,7 +163,6 @@
 	 * <br>This is the currently executed, "main" file.
 	 * @example C:/wamp/www/ OR /home/visitgoz/public_html/
 	 */
-	CFG::set('REL_WWW', dirname($_SERVER['PHP_SELF']).'/');
-
+	CFG::set('REL_WWW', str_replace('//','/',dirname($_SERVER['PHP_SELF']).'/'));
 
 ?>

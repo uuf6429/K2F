@@ -26,7 +26,17 @@
 					foreach(get_object_vars($row) as $k=>$data)
 						if(stripos(is_scalar($data) ? ''.$data : implode('',array_values((array)$data)),$search)!==false){
 							$found=true;
-							break;
+							break; // performance hotfix
+						}
+					if(!$found) // if not found as normal row, try search in formatted data (the conditional is a performance fix)
+						foreach($columns as $colid=>$colname){
+							$data=strip_tags((count($handler)>0 && $handler!='')
+								? call_user_func($handler,$row->$colkey,$row,$colid,isset($row->$colid) ? $row->$colid : null)
+								: (isset($row->$colid) ? $row->$colid : ''));
+							if(stripos($data,$search)!==false){
+								$found=true;
+								break; // performance hotfix
+							}
 						}
 					if(!$found)unset($rows[$i]);
 				}
@@ -39,8 +49,9 @@
 				$media_per_page = 20;
 			$l = apply_filters( 'upload_per_page', $media_per_page );
 			## END wordpress bs ##
+			$l = isset($_REQUEST['k2f-limit']) ? (int)$_REQUEST['k2f-limit'] : $l; // fk you wp - this is a serious limitation!
 			$t = count($rows);
-			$c = ceil($t/$l)-1;
+			$c = $l<=0 ? 0 : ceil($t/$l)-1;
 			$p = min($p,$c);
 			if($l>0)$rows = array_splice($rows,$p*$l,$l);
 
@@ -97,7 +108,7 @@
 						<div class="tablenav-pages">
 							<img src="<?php echo Ajax::url('K2F_WP_WYSIWYG_HACK','loader'); ?>" style="display:none; margin:-2px 6px 0 0; vertical-align: middle;" width="16" height="16" alt="Loading..." class="k2f-pgnation-throbber"/>
 							<span class="displaying-num"><?php echo $t; ?> items</span>
-							<a href="javascript:;" onclick="if(!jQuery(this).is('.disabled'))k2f_pgnation_page(this,1);" title="Go to the first page" class="first-page<?php if($p==0)echo ' disabled'; ?>">&laquo;</a>
+							<a href="javascript:;" onclick="if(!jQuery(this).is('.disabled'))k2f_pgnation_page(this,0);" title="Go to the first page" class="first-page<?php if($p==0)echo ' disabled'; ?>">&laquo;</a>
 							<a href="javascript:;" onclick="if(!jQuery(this).is('.disabled'))k2f_pgnation_page(this,<?php echo $p-1; ?>);" title="Go to the previous page" class="prev-page<?php if($p==0)echo ' disabled'; ?>">&lsaquo;</a>
 							<span class="paging-input">
 								<?php if($istop){ ?>
@@ -123,8 +134,8 @@
 			<p class="search-box">
 				<img src="<?php echo Ajax::url('K2F_WP_WYSIWYG_HACK','loader'); ?>" style="display:none; margin:-2px 6px 0 0; vertical-align: middle;" width="16" height="16" alt="Loading..." class="k2f-search-throbber"/>
 				<label for="post-search-input" class="screen-reader-text">Search Items:</label>
-				<input type="text" value="<?php if(isset($_REQUEST['k2f-search']))echo Security::snohtml($_REQUEST['k2f-search']); ?>" name="s" class="k2f-search" id="post-search-input" onkeyup="evant=event||window.event; if(event.keyCode==13)k2f_reload(this);"/>
-				<input type="button" value="Search Items" class="button" id="search-submit" onclick="k2f_reload(this);"/>
+				<input type="text" value="<?php if(isset($_REQUEST['k2f-search']))echo Security::snohtml($_REQUEST['k2f-search']); ?>" name="s" class="k2f-search" id="post-search-input" onkeyup="evant=event||window.event; if(event.keyCode==13)k2f_search_search(this);"/>
+				<input type="button" value="Search Items" class="button" id="search-submit" onclick="k2f_search_search(this);"/>
 			</p>
 			
 			<br class="clear"/><?php
@@ -159,16 +170,28 @@
 			
 			?></div>&nbsp;<?php
 		}
-		protected static $menucounnter=0;
+		public static $menu_list=array();
 		public function admin_add_menu($name,$text,$icons,$handler){
-			$slug='k2f_'.self::$menucounnter++;
-			add_menu_page($name,$name,'manage_options',$slug,$handler,$icons->_16);
-			add_submenu_page($slug,'','','manage_options',$slug,$handler);
-			return $slug;
+			return array_push(self::$menu_list,array(null,$name,$text,$icons,$handler))-1;
 		}
 		public function admin_add_submenu($parent,$name,$text,$icons,$handler){
-			$slug='k2f_'.self::$menucounnter++;
-			add_submenu_page($parent,$name,$name,'manage_options',$slug,$handler,$icons->_16);
+			return array_push(self::$menu_list,array($parent,$name,$text,$icons,$handler))-1;
+		}
+		public function client_add_menu($name,$text,$icons,$handler){
+			return array_push(self::$menu_list,array(null,$name,$text,$icons,$handler))-1;
+		}
+		public function client_add_submenu($parent,$name,$text,$icons,$handler){
+			return array_push(self::$menu_list,array($parent,$name,$text,$icons,$handler))-1;
+		}
+		public function guest_add_menu($name,$text,$icons,$handler){
+			return array_push(self::$menu_list,array(null,$name,$text,$icons,$handler))-1;
+		}
+		public function guest_add_submenu($parent,$name,$text,$icons,$handler){
+			return array_push(self::$menu_list,array($parent,$name,$text,$icons,$handler))-1;
+		}
+		public function url_to_menu($menu,$args=array()){
+			foreach($args as $k=>$v)$args[$k]='&'.$k.'='.urlencode($v);
+			return 'admin.php?page=k2f_'.(int)$menu.implode('',$args);
 		}
 		public function config_get($key){
 			return get_option('k2f_'.$key);
@@ -510,7 +533,7 @@
 			return current_user_can('manage_options');
 		}
 		public function is_client(){
-			return $this->is_admin() || is_user_logged_in();
+			return !$this->is_admin() && is_user_logged_in();
 		}
 		public function is_guest(){
 			return !is_user_logged_in();
@@ -738,14 +761,58 @@
 	Ajax::register('K2F_WP_WYSIWYG_HACK','pbreak');
 
 	/* Wordpress Hooks */
-	function k2f_wp_admin_menus(){
-		Events::call('on_admin_menu');
+	function k2f_wp_backend_menus(){
+		$can=CmsHost::cms()->is_admin() ? 'manage_options' : (CmsHost::cms()->is_client() ? 'read' : '');
+		$main=array(); // bitlist for main plugin page hotfix
+		foreach(CmsHost_wordpress::$menu_list as $id=>$item){
+			list($pid,$name,$text,$icons,$handler)=$item;
+			if($pid===null){ // main-item
+				add_menu_page($name,$name,$can,'k2f_'.$id,$handler,$icons->_16);
+				$main['k2f_'.$id]=true; // main plugin page hotfix
+			}else{ // sub-item
+				// the following line is for main plugin page hotfix
+				$nid=isset($main['k2f_'.$pid]) ? 'k2f_'.$pid : 'k2f_'.$id; unset($main['k2f_'.$pid]);
+				add_submenu_page('k2f_'.$pid,$name,$name,$can,$nid,$handler,$icons->_16);
+			}
+		}
 	}
-	function k2f_wp_registered_menus(){
-		Events::call('on_registered_menu');
-	}
-	function k2f_wp_guest_menus(){
-		Events::call('on_guest_menu');
+	function k2f_wp_frontend_menus($pages,$query){
+		if(!CmsHost::cms()->is_admin()){
+			// TODO: Play with $query to modify our returned pages.
+			foreach(CmsHost_wordpress::$menu_list as $id=>$item){
+				list($pid,$name,$text,$icons,$handler)=$item;
+				$pid+=900000; $id+=900000;
+				$page=array(
+					'ID' => $id,
+					'post_author' => 1,
+					'post_date' => date('Y-m-d H:i:s'),
+					'post_date_gmt' => date('Y-m-d H:i:s'),
+					'post_content' => 'gbvxbv fbbx xbbx', // TODO: if post_id==-id call page content
+					'post_title' => $name,
+					'post_excerpt' => '',
+					'post_status' => 'publish',
+					'comment_status' => 'closed',
+					'ping_status' => 'closed',
+					'post_password' => '',
+					'post_name' => sanitize_title($name),
+					'to_ping' => '',
+					'pinged' => '',
+					'post_modified' => date('Y-m-d H:i:s'),
+					'post_modified_gmt' => date('Y-m-d H:i:s'),
+					'post_content_filtered' => '',
+					'post_parent' => $pid,
+					'guid' => md5(''.$id),
+					'menu_order' => '0',
+					'post_type' => 'page',
+					'post_mime_type' => '',
+					'comment_count' => 0,
+					'filter' => 'raw',
+					'url' => 'http://google.com/'
+				);
+				$pages[]=(object)$page;
+			}
+		}
+		return $pages;
 	}
 	function k2f_wp_admin_head(){
 		// this hotfix fixes a bug where when we load the media, "Screen Options" box malfunctions.
@@ -772,7 +839,12 @@
 		Events::call('on_head');
 	}
 	function k2f_wp_init(){
+		// run init stuff
 		Events::call('on_init');
+		// run menu stuff
+		if(CmsHost::cms()->is_admin())Events::call('on_admin_menu');
+		if(CmsHost::cms()->is_client())Events::call('on_registered_menu');
+		if(CmsHost::cms()->is_guest())Events::call('on_guest_menu');
 		// code to rewrite wordpress urls
 		/*
 		global $wp_rewrite;
@@ -824,12 +896,11 @@
 	}
 
 	/* Wordpress actions */
-	add_action('admin_menu','k2f_wp_admin_menus');
-	add_action('admin_menu','k2f_wp_registered_menus');
-	add_action('admin_menu','k2f_wp_guest_menus');
+	add_action('admin_menu','k2f_wp_backend_menus');
 	add_action('admin_head','k2f_wp_admin_head');
 	add_action('wp_head',   'k2f_wp_head');
 	add_action('init',      'k2f_wp_init');
+	add_filter('get_pages' ,'k2f_wp_frontend_menus',10,2);
 
 	/* Ensure all Wordpress features are on */
 	wp_enqueue_script('media-upload');

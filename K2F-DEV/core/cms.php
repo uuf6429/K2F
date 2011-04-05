@@ -159,6 +159,7 @@
 					echo '<input type="button" value="'.Security::snohtml(ucwords($action)).'"/>';
 			?></div><?php
 		}
+		protected static $menucounter=0;
 		/**
 		 * Adds a new main menu item (visible in backend only).
 		 * @param string $name The item's name.
@@ -168,8 +169,7 @@
 		 * @return mixed Newly created menu item's handle. Used to create sub menu items.
 		 */
 		public function admin_add_menu($name,$text,$icons,$handler){
-			static $count=0;
-			return ++$count;
+			return ++self::$menucounter;
 		}
 		/**
 		 * Adds a new sub item to a menu (visible in backend only).
@@ -178,9 +178,10 @@
 		 * @param string $text A short description of the item, may be used a sub-title or hint.
 		 * @param AppIcon $icons A set of multi-sized icons to represent menu item.
 		 * @param string|array $handler Function/object/class called when this menu item is clicked.
+		 * @return mixed Newly created menu item's handle.
 		 */
 		public function admin_add_submenu($parent,$name,$text,$icons,$handler){
-
+			return ++self::$menucounter;
 		}
 		/**
 		 * Adds a new main menu item (visible in frontend only).
@@ -191,8 +192,7 @@
 		 * @return mixed Newly created menu item's handle. Used to create sub menu items.
 		 */
 		public function client_add_menu($name,$text,$icons,$handler){
-			static $count=0;
-			return ++$count;
+			return ++self::$menucounter;
 		}
 		/**
 		 * Adds a new sub item to a menu (visible in frontend only).
@@ -201,9 +201,10 @@
 		 * @param string $text A short description of the item, may be used a sub-title or hint.
 		 * @param AppIcon $icons A set of multi-sized icons to represent menu item.
 		 * @param string|array $handler Function/object/class called when this menu item is clicked.
+		 * @return mixed Newly created menu item's handle.
 		 */
 		public function client_add_submenu($parent,$name,$text,$icons,$handler){
-
+			return ++self::$menucounter;
 		}
 		/**
 		 * Adds a new main menu item (visible in frontend only).
@@ -214,8 +215,7 @@
 		 * @return mixed Newly created menu item's handle. Used to create sub menu items.
 		 */
 		public function guest_add_menu($name,$text,$icons,$handler){
-			static $count=0;
-			return ++$count;
+			return ++self::$menucounter;
 		}
 		/**
 		 * Adds a new sub item to a menu (visible in frontend only).
@@ -224,9 +224,19 @@
 		 * @param string $text A short description of the item, may be used a sub-title or hint.
 		 * @param AppIcon $icons A set of multi-sized icons to represent menu item.
 		 * @param string|array $handler Function/object/class called when this menu item is clicked.
+		 * @return mixed Newly created menu item's handle.
 		 */
 		public function guest_add_submenu($parent,$name,$text,$icons,$handler){
-
+			return ++self::$menucounter;
+		}
+		/**
+		 * Constructs a URL to menu page (with get arguments).
+		 * @param mixed $menu Menu item handle.
+		 * @param array $args List of argument to pass to menu page.
+		 * @return string The menu page URL.
+		 */
+		public function url_to_menu($menu,$args=array()){
+			return '';
 		}
 		/**
 		 * Returns the value of $key or an empty string.
@@ -234,7 +244,7 @@
 		 * @return string The setting's value or an empty string.
 		 */
 		public function config_get($key){
-
+			return ++self::$menucounter;
 		}
 		/**
 		 * Sets the value of a setting.
@@ -312,14 +322,14 @@
 		 * @return boolean Whether it is or not.
 		 */
 		public function is_client(){
-			return $this->is_admin() || false;
+			return false;
 		}
 		/**
 		 * Returns whether the current user is not an admin/client or not.
 		 * @return boolean Whether it is or not.
 		 */
 		public function is_guest(){
-			return !$this->is_admin() && !$this->is_client();
+			return true;
 		}
 		/**
 		 * Returns the currently logged in user's id.
