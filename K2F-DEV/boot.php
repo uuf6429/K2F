@@ -219,5 +219,4 @@
 	foreach(glob(CFG::get('ABS_K2F').'core/*.php') as $file)
 		uses('core/'.basename($file));
 
-
 ?>
