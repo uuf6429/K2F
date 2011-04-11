@@ -24,7 +24,7 @@
 				foreach($rows as $i=>$row){
 					$found=false;
 					foreach(get_object_vars($row) as $k=>$data)
-						if(stripos(is_scalar($data) ? ''.$data : implode('',array_values((array)$data)),$search)!==false){
+						if(stripos(is_scalar($data) ? ''.$data : implode(' ',array_filter((array)$data,'is_scalar')),$search)!==false){
 							$found=true;
 							break; // performance hotfix
 						}
@@ -768,10 +768,14 @@
 			list($pid,$name,$text,$icons,$handler)=$item;
 			if($pid===null){ // main-item
 				add_menu_page($name,$name,$can,'k2f_'.$id,$handler,$icons->_16);
-				$main['k2f_'.$id]=true; // main plugin page hotfix
+				$main['k2f_'.$id]=implode('.',$handler); // main plugin page hotfix
 			}else{ // sub-item
 				// the following line is for main plugin page hotfix
-				$nid=isset($main['k2f_'.$pid]) ? 'k2f_'.$pid : 'k2f_'.$id; unset($main['k2f_'.$pid]);
+				$nid='k2f_'.$id;
+				if(isset($main['k2f_'.$pid]) && $main['k2f_'.$pid]==implode('.',$handler)){
+					$nid='k2f_'.$pid;
+					unset($main['k2f_'.$pid]);
+				}
 				add_submenu_page('k2f_'.$pid,$name,$name,$can,$nid,$handler,$icons->_16);
 			}
 		}

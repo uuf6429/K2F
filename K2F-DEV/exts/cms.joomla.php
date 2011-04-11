@@ -161,7 +161,7 @@
 				foreach($rows as $i=>$row){
 					$found=false;
 					foreach(get_object_vars($row) as $k=>$data)
-						if(stripos(is_scalar($data) ? ''.$data : implode('',array_values((array)$data)),$search)!==false){
+						if(stripos(is_scalar($data) ? ''.$data : implode(' ',array_filter((array)$data,'is_scalar')),$search)!==false){
 							$found=true;
 							break; // performance hotfix
 						}
