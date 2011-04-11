@@ -52,7 +52,7 @@
 			$l = isset($_REQUEST['k2f-limit']) ? (int)$_REQUEST['k2f-limit'] : $l; // fk you wp - this is a serious limitation!
 			$t = count($rows);
 			$c = $l<=0 ? 0 : ceil($t/$l)-1;
-			$p = min($p,$c);
+			$p = max(min($p,$c),0);
 			if($l>0)$rows = array_splice($rows,$p*$l,$l);
 
 			if(!function_exists('CmsHost_wp_al_cols')){

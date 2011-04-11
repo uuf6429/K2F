@@ -184,7 +184,7 @@
 			$t = count($rows);
 			$c = ceil($t/$l)-1;
 			if($l>0)$rows = array_splice($rows,$p*$l,$l);
-			$p = min($p,$c);
+			$p = max(min($p,$c),0);
 			//die_r("p=$p, t=$t, l=$l, c=".ceil($t/$l));
 			// add global actions buttons to toolbar
 			foreach($actions as $action)self::_make_joom_button($action);
