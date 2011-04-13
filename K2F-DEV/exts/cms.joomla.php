@@ -335,9 +335,10 @@
 					}
 					function k2f_submit(elem,action){
 						// compute some variables...
-						var s=jQuery('.k2f-search').val(); // this is not threadsafe! (multiple tables)
-						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-page','k2f-ign');
-						url+='&k2f-search='+encodeURIComponent(s)+"&k2f-page="+k2f_page;
+						var l=jQuery('.k2f-page-limit').val()*1; // this is not threadsafe! (multiple tables)
+						var s=jQuery('.k2f-search-search').val(); // this is not threadsafe! (multiple tables)
+						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-limit','k2f-ign').replace('k2f-page','k2f-ign');
+						url+='&k2f-limit='+l+'&k2f-page='+k2f_pgnation_page+'&k2f-search='+encodeURIComponent(s);
 						// continue...
 						if(action!='refresh' && action!='close' && action!='cancel'){
 							var el=jQuery(elem).parents('form');
