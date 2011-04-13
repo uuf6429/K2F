@@ -287,6 +287,10 @@
 					}
 					var k2fajax=null;
 					function k2f_submit(elem,action){
+						// compute some variables...
+						var s=jQuery('.k2f-search').val(); // this is not threadsafe! (multiple tables)
+						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-page','k2f-ign');
+						url+='&k2f-search='+encodeURIComponent(s)+"&k2f-page="+k2f_page;
 						// wordpress iframe hack: move html to textarea
 						jQuery('iframe.k2f-richedit').each(function(){
 							var id=jQuery(this).attr('id').replace('k2f-','');  // id of textarea and richedit
@@ -315,13 +319,13 @@
 									if(jQuery('#TB_ajaxContent').length==0)
 										jQuery('#k2f-nopopup').html(data);
 									// refresh page (well, parts of it)
-									k2f_refresh();
+									k2f_refresh(url);
 								});
 							}
 						}else{
 							jQuery('#k2f-nopopup').hide();
 							jQuery('.k2f-adminlist').show();
-							if(action=='refresh')k2f_refresh();
+							if(action=='refresh')k2f_refresh(url);
 							tb_remove();
 						}
 					}
