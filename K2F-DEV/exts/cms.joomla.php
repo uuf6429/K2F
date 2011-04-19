@@ -406,8 +406,8 @@
 						jQuery(el).parents('form').find('input[name=toggle]:checkbox').attr('checked',cbC==cbA);
 						document.adminForm.boxchecked.value=cbC;
 					}
-					function k2f_apply(action,tbl){
-						var ids='';
+					function k2f_apply(action,tbl,ids){
+						if(typeof ids=='undefined')var ids='';
 						jQuery('#k2f-al-'+(tbl.replace('k2f-al-','')*1)+' input[name="checked\\[\\]"]:checked').each(function(id,el){
 							ids+='&k2f-checked[]='+encodeURIComponent(el.value);
 						});
@@ -722,7 +722,7 @@
 		//// <--TEMPORARY HACK ////
 		$html=ob_get_clean();
 		$doc=&JFactory::getDocument();
-		$doc->addCustomTag($html);
+		if(get_class($doc)=='JDocumentHTML')$doc->addCustomTag($html);
 		// show submenu items for a specific application
 		foreach(CmsHost_joomla::$menus['admin']['menu'] as $parent=>$menu){
 			$fnd=false;

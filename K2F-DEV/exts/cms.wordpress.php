@@ -1,3 +1,4 @@
+
 <?php defined('K2F') or die;
 
 	uses('core/cms.php','core/security.php','core/events.php','core/ajax.php');
@@ -253,8 +254,8 @@
 						jQuery('#TB_ajaxContent').css('height','');
 						return false; // in case of links, stop 'em from redirecting (you need to return in the onclick as well)
 					}
-					function k2f_apply(action,tbl){
-						var ids='';
+					function k2f_apply(action,tbl,ids){
+						if(typeof ids=='undefined')var ids='';
 						jQuery('#k2f-al-'+(tbl.replace('k2f-al-','')*1)+' input[name="checked\\[\\]"]:checked').each(function(id,el){
 							ids+='&k2f-checked[]='+encodeURIComponent(el.value);
 						});
