@@ -1,4 +1,3 @@
-
 <?php defined('K2F') or die;
 
 	uses('core/cms.php','core/security.php','core/events.php','core/ajax.php');
