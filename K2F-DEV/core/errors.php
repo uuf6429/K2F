@@ -36,7 +36,7 @@
 		 * Write the nice & friendly Debug Mode warning
 		 */
 		public static function write_debug_warning(){
-			if(CFG::get('DEBUG_MODE')!='none' && CFG::get('DEBUG_WARN') && !Ajax::is_on()){
+			if(str_replace('none','',CFG::get('DEBUG_MODE'))!='' && !Ajax::is_on()){
 				$ie6h=(stripos(str_replace(' ','',$_SERVER['HTTP_USER_AGENT']),'MSIE6')!==false); // ie6 hotfix
 				?><div style="-moz-border-radius:8px; -webkit-border-radius:8px; border-radius:8px;
 					-moz-box-shadow:0 0 8px #000; -webkit-box-shadow:0 0 8px #000; box-shadow:0 0 8px #000;

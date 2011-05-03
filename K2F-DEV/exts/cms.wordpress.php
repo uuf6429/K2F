@@ -269,9 +269,9 @@
 						});
 						var url=location.href+'<?php
 							echo (count($callback)==2) ? Ajax::url($callback[0],$callback[1],'&') : '&k2f-notajax';
-							?>&k2f-table='+(tbl.replace('k2f-al-','')*1)+'&k2f-action='+encodeURIComponent(action)+ids;
+							?>&k2f-table='+(tbl.replace('k2f-al-','')*1)+'&k2f-action='+encodeURIComponent(action);
 						jQuery('.k2f-adminlist').hide();
-						jQuery.get(url,function(data){
+						jQuery.post(url,ids.substring(1),function(data){
 							jQuery('#k2f-nopopup').html(data);
 							jQuery('#k2f-nopopup').show();
 						});
@@ -343,7 +343,7 @@
 						// - replaces all <tbody>s of current page with the new HTML using DOM
 						// todo: maybe do this via POST for cases like pagination
 						if(typeof url=='undefined')url=location.href;
-						return jQuery.get(url,function(data){
+						return jQuery.post(url,function(data){
 							// get list of checked checkboxes with an id
 							var cbs=[];
 							jQuery('input[type=checkbox]:checked').each(function(){ cbs.push(jQuery(this).attr('id')) });
@@ -380,7 +380,7 @@
 							?>&k2f-table='+tbl+'&k2f-action='+encodeURIComponent(action)+'&k2f-checked[]='+(id*1);
 						if(window['k2f-options-'+tbl].indexOf('nopopup:'+action)!=-1){
 							jQuery('.k2f-adminlist').hide();
-							jQuery.get(url,function(data){
+							jQuery.post(url,function(data){
 								jQuery('#k2f-nopopup').html(data);
 								jQuery('#k2f-nopopup').show();
 							});

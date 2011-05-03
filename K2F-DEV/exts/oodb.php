@@ -29,6 +29,7 @@
 	 *          21/02/2011 - Columns/properties starting with a single underscore (eg: $_internal) are not saved/loaded.
 	 *          22/02/2011 - Fixed DatabaseRows->count(); missed argument 1 (table) of Database->rows_count().
 	 *          22/02/2011 - Fixed DatabaseRows->load(); missed setting $this->loaded flag.
+	 *          25/04/2011 - Replaced most (array)$obj typecasts with get_object_vars($obj) function due to "\0*\0" property bug.
 	 *          00/00/T0D0 - May work with variable named unique column (used to be "id").
 	 */
 	class DatabaseRow {
@@ -66,7 +67,7 @@
 			$cols=isset($GLOBALS['K2F-OODB-COLCACHE'][$this->table()])
 				? $GLOBALS['K2F-OODB-COLCACHE'][$this->table()]
 				: $GLOBALS['K2F-OODB-COLCACHE'][$this->table()]=Database::db()->cols_all($this->table());
-			foreach((array)$this as $prop=>$val)
+			foreach(get_object_vars($this) as $prop=>$val)
 				if($prop{0}!='_' && !isset($cols[$prop])){
 					$type='text'; // anything can be serialized to text!
 					if(is_int($val))$type='int';
@@ -79,7 +80,7 @@
 				$this->id=$source;
 			// load from object source
 			if(is_object($source) || is_array($source))
-				foreach((array)$source as $prop=>$value)
+				foreach(get_object_vars($source) as $prop=>$value)
 					if($prop{0}!='_'){
 						if(isset($this->$prop)){
 							if(is_array($this->$prop)){
@@ -107,7 +108,7 @@
 				$rows=Database::db()->rows_load($this->table(),$condition);
 				if($rows && isset($rows[0])){
 					$row=$rows[0];
-					foreach((array)$row as $prop=>$value)
+					foreach(get_object_vars($row) as $prop=>$value)
 						if($prop{0}!='_'){
 							if(isset($this->$prop)){
 								if(is_array($this->$prop)){
@@ -135,7 +136,7 @@
 		public function save(){
 			// clone object, serialize any non-scalar values and remove private properties
 			$save=clone($this);
-			foreach((array)$save as $p=>$v){
+			foreach(get_object_vars($save) as $p=>$v){
 				if(!is_scalar($v))
 					$save->$p=@json_encode($v);
 				if($p{0}=='_')

@@ -166,17 +166,33 @@
 	 * If $mode is boolean, it turns xlog on or off. Otherwise, returns whether xlog is on or off.
 	 * @param boolean $mode (Optional) If set, it switches xlog on or off.
 	 * @return boolean The current state of whether xlog is on or off.
+	 * @deprecated Not needed anymore after the introduction of bufferred logging.
 	 */
 	function xlog_enable($mode=null){
+		xlog('Warning: function "xlog_enable" is deperecated.');
 		if($mode!==null)$GLOBALS['K2FXLOG'][]=$mode;
 		return $GLOBALS['K2FXLOG'][count($GLOBALS['K2FXLOG'])-1];
 	}
 
 	/**
 	 * Reverts to the previous xlog logging state.
+	 * @deprecated Not needed anymore after the introduction of bufferred logging.
 	 */
 	function xlog_revert(){
+		xlog('Warning: function "xlog_enable" is deperecated.');
 		array_pop($GLOBALS['K2FXLOG']);
+	}
+
+	/**
+	 * Function used to decide whether we should output debug info or not.
+	 * @ignore Do not call function directly.
+	 */
+	function xlogr_auth(){
+		static $result=null;
+		if($result===null){
+			$result=true; // TODO: Actually evaluate some sort of condition.
+		}
+		return $result;
 	}
 	
 	/**
@@ -187,7 +203,7 @@
 	 *       <br>If framework updates both files at the same time, nothing should break up. Hopefully.
 	 */
 	function xlogr(){
-		if(!isset($_REQUEST['ajax']) && xlog_enable() && ($logmode=CFG::get('DEBUG_MODE'))!='none'){
+		if(!isset($_REQUEST['ajax']) && ($logmode=CFG::get('DEBUG_MODE'))!='none' && xlogr_auth()){
 			$time=microtime(); $time='"'.date(/*'d-m-y '.*/'H:i:s ').substr(substr($time,strpos('.',$time)+2),0,4).'","-"';
 			$result=''; $mode='info'; foreach(func_get_args() as $k=>$v){
 				if((is_string($k) && stripos($k,'warning:')!==false) || (is_string($v) && stripos($v,'warning:')!==false))$mode='warn';
@@ -196,7 +212,7 @@
 				if((is_string($k) && stripos($k,'failure:')!==false) || (is_string($v) && stripos($v,'failure:')!==false))$mode='error';
 				if((is_string($k) && stripos($k,'fatal:')!==false)   || (is_string($v) && stripos($v,'fatal:')  !==false))$mode='error';
 			}
-			switch($logmode.CFG::get('DEBUG_UNBUFFERED','')){
+			switch($logmode){
 				case 'html':
 					$result.='<div style="color:#FFF;background:#000;font-family:\'Lucida Console\';font-size:11px;padding:4px;">';
 						foreach(func_get_args() as $arg)
@@ -213,31 +229,64 @@
 					$result.='-->';
 					break;
 				case 'console':
-					if(!isset($GLOBALS['console_fix'])){
-						$result.='<script type="text/javascript">
-							if(typeof window.mycon==\'undefined\'){
-								window.mycon={
-									"log": function(){   console.log.apply(console,arguments);   },
-									"info": function(){  console.info.apply(console,arguments);  },
-									"warn": function(){  console.warn.apply(console,arguments);  },
-									"error": function(){ console.error.apply(console,arguments); },
-									"debug": function(){ console.debug.apply(console,arguments); }
-								};
-							}
-							if(typeof window.console==\'undefined\'){
-								window.console={
-									"log": function(){ },
-									"info": function(){ },
-									"warn": function(){ },
-									"error": function(){ },
-									"debug": function(){ }
-								};
-							}
-						</script>';
-						$GLOBALS['console_fix']=true;
-					}
 					$a=array($time); foreach(func_get_args() as $arg)$a[]=@json_encode($arg);
-					$result.='<script type="text/javascript">mycon.'.$mode.'('.implode(',',$a).');</script>';
+					if(!CFG::get('DEBUG_BUFFERED',true)){
+						// This is the old code; JS was spit out anywhere...
+						if(!isset($GLOBALS['console_fix'])){
+							$result.=str_replace(array(CR,LF,TAB,'  '),'','<script type="text/javascript">
+								if(typeof window.k2fcon==\'undefined\'){
+									window.k2fcon={
+										"log": function(){   console.log.apply(console,arguments);   },
+										"info": function(){  console.info.apply(console,arguments);  },
+										"warn": function(){  console.warn.apply(console,arguments);  },
+										"error": function(){ console.error.apply(console,arguments); },
+										"debug": function(){ console.debug.apply(console,arguments); }
+									};
+								}
+								if(typeof window.console==\'undefined\'){
+									window.console={
+										"log": function(){ },
+										"info": function(){ },
+										"warn": function(){ },
+										"error": function(){ },
+										"debug": function(){ }
+									};
+								}
+							</script>');
+							$GLOBALS['console_fix']=true;
+							$result.='<script type="text/javascript">k2fcon.'.$mode.'('.implode(',',$a).');</script>';
+						}
+					}else{
+						// This is the new code, JS is written at the end of file, fixing loads of trouble...
+						if(!isset($GLOBALS['k2f_console_buff'])){
+							$GLOBALS['k2f_console_buff']=str_replace(array(CR,LF,TAB,'  '),'','<script type="text/javascript">
+								if(typeof window.k2fcon==\'undefined\'){
+									window.k2fcon={
+										"log": function(){   console.log.apply(console,arguments);   },
+										"info": function(){  console.info.apply(console,arguments);  },
+										"warn": function(){  console.warn.apply(console,arguments);  },
+										"error": function(){ console.error.apply(console,arguments); },
+										"debug": function(){ console.debug.apply(console,arguments); }
+									};
+								}
+								if(typeof window.console==\'undefined\'){
+									window.console={
+										"log": function(){ },
+										"info": function(){ },
+										"warn": function(){ },
+										"error": function(){ },
+										"debug": function(){ }
+									};
+								}
+							</script>');
+							function _xlogr_render(){ echo $GLOBALS['k2f_console_buff']; $GLOBALS['k2f_console_buff']=true; }
+							register_shutdown_function('_xlogr_render');
+						}elseif(is_string($GLOBALS['k2f_console_buff'])){
+							$GLOBALS['k2f_console_buff'].='<script type="text/javascript">k2fcon.'.$mode.'('.implode(',',$a).');</script>';
+						}else{
+							return '<script type="text/javascript">k2fcon.'.$mode.'('.implode(',',$a).');</script>';
+						}
+					}
 					break;
 			}
 			return $result;

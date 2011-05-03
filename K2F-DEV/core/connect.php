@@ -197,7 +197,7 @@
 		 * @return boolean Whether it is IP v4 or not.
 		 */
 		public static function isIpv4($ip){
-			return count('.',explode($ip))==4;
+			return count('.',explode($ip))==4 && max($ip)<256;
 		}
 		public static function toIpv6($ip) {
 			// define
@@ -273,6 +273,11 @@
 		}
 		const IPV4_LENGTH=4;
 		const IPV6_LENGTH=16;
+		/**
+		 * Attempts to get favicon from website markup (must not be dynamic). <b>NB:</b> Internal use only.
+		 * @param string $url The URL to query.
+		 * @return string URL to favicon or empty string if it was not found.
+		 */
 		protected static function faviconGetLink($url){
 			$html=self::get($url);
 			if($html=='')return ''; // could not get any html whatsoever
@@ -280,7 +285,7 @@
 				if(preg_match('/<link[^>]+href="([^"]*)"[^>]+rel="(?:shortcut )?icon"/si',$html,$m)==0)
 					return ''; // shortcut icon link tag not found
 			$m=$m[1];
-			if(substr($m,0,1)=='/')$m=$url.$m;
+			if(substr($m,0,1)=='/')$m=$url.$m; // convert relative file to absolute
 			return $m;
 		}
 		/**
@@ -297,10 +302,10 @@
 		}
 		/**
 		 * Attempts to find URL to favicon. Behavior is like browsers;<br>
-		 *   first it looks for a <link> tag with favicon and then it tries<br>
-		 *   looking for /favicon.ico directly.<br>
+		 *   first it looks for a <link> tag with favicon and then (if not found)<br>
+		 *   it tries looking for /favicon.ico directly.<br>
 		 * <b>WARNING:</b> This code involves getting data from a 3rd party, thus slowing down your site considerably.
-		 * You should either cache responses (favicon urls) or at leas call this code via AJAX.
+		 * You should either cache responses (favicon urls) or at least call this code via AJAX.
 		 * @param string $url Original site to look for.
 		 * @param string $asHtml If this is true, HTML image is returned instead of favicon url.
 		 * @return srting The favicon's URL is found, or an empty string otherwise.

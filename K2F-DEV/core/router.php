@@ -8,6 +8,7 @@
 	 * @author Christian Sciberras
 	 * @version 12/10/2010 - Original implementation.
 	 *          06/12/2010 - Now supports debugable interface.
+	 *          25/04/2011 - Hotfix for route $_POST unsetter.
 	 */
 
 	class Router implements Debugable {
@@ -32,6 +33,7 @@
 			$uri=$_SERVER['REQUEST_URI'];
 			// clean up GET and REQUEST parameters from router trigger
 			unset($_REQUEST['k2fhandleroute']);
+			unset($_POST['k2fhandleroute']);
 			unset($_GET['k2fhandleroute']);
 			// do some logging
 			xlog('Handling route ',$uri,$_REQUEST);

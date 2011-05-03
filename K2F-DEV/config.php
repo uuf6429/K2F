@@ -93,13 +93,8 @@
 		'CMS_HOST'=>'none',
 
 		/**
-		 * This option controls whether to show the debug warning or not.
-		 */
-		'DEBUG_WARN'=>true,
-
-		/**
 		 * This option controls debug mode. On production servers, ensure this is
-		 * set to "none" (that is, turned off).
+		 * set to "none" (that is, debug is turned off).
 		 * Possible values are: console, html, comment or none
 		 */
 		'DEBUG_MODE'=>'console',
@@ -110,6 +105,14 @@
 		 * logged (such as errors and generic framework stuff).
 		 */
 		'DEBUG_VERBOSE'=>true,
+
+		/**
+		 * Triggers debug buffering or not. This is especially useful to avoid the
+		 * debugger throwing stuff where it shouldn't and instead only output at
+		 * the very end. As a side effect, serious PHP/Apache crashes will cause
+		 * the log to not be shown at all.
+		 */
+		'DEBUG_BUFFERED'=>true,
 
 		/**
 		 * This controls whether the whole site should be running from SSL, thus

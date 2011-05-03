@@ -9,7 +9,8 @@
 	 * @version 02/11/2010 - Original implementation.
 	 *          06/12/2010 - Now supports debugable interface (where applicable).
 	 *          06/01/2011 - Discovered a huge flaw in using get_called_class; fixed using get_class_name instead.
-	 *          20/01/2011 - Add on_[before|after]_[app|apps]_load events.
+	 *          20/01/2011 - Added on_[before|after]_[app|apps]_load events.
+	 *          07/04/2011 - Fixed application boot to ignore files in apps folder.
 	 */
 
 	class Application {
@@ -137,7 +138,8 @@
 		public static function _init(){
 			Events::call('on_before_apps_load');
 			foreach(glob(CFG::get('ABS_K2F').'apps/*') as $appname)
-				self::load(basename($appname));
+				if(is_dir($appname))
+					self::load(basename($appname));
 			Events::call('on_after_apps_load');
 		}
 		/**

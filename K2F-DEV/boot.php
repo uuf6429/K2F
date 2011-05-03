@@ -1,5 +1,5 @@
 <?php
-	
+
 	/**
 	 * This is the bootloader for K2F. In order to use K2F in your system, just include this file.
 	 * @copyright 2010 Covac Software
@@ -215,8 +215,14 @@
 	function _k2f_boot_check2(){ register_shutdown_function('_k2f_boot_check3'); }
 	register_shutdown_function('_k2f_boot_check1');
 
+	// trigger event if Event support is enabled (before boot?)
+	if(class_exists('Events'))Events::call('on_before_boot');
+
 	// load core classes
 	foreach(glob(CFG::get('ABS_K2F').'core/*.php') as $file)
 		uses('core/'.basename($file));
+	
+	// trigger event if Event support is enabled
+	if(class_exists('Events'))Events::call('on_after_boot');
 
 ?>

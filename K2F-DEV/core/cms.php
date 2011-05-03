@@ -68,7 +68,7 @@
 		 * @return mixed Either the URL part or the $default value (if matching failed).
 		 * @example <code>
 		 *            // echoes '45'
-		 *            echo url('/events/%venue%/%id%-%name%/','/events/Malta/45-Event/',array('venue','name'),'id');
+		 *            echo struct_parse('/events/%venue%/%id%-%name%/','/events/Malta/45-Event/',array('venue','name'),'id');
 		 *          </code>
 		 */
 		public static function struct_parse($structure,$url,$parts=array(),$part='',$default=null){
@@ -89,6 +89,24 @@
 			$vars=array();
 			foreach($parts as $k)$vars['%'.$k.'%']='[^/]+';
 			return '('.str_replace(array_keys($vars),array_values($vars),preg_quote(trim($structure,'/'))).')/?$';
+		}
+		/**
+		 * Generates a URL given structure and source array.
+		 * @param string $structure The new URL structure to follow.
+		 * @param array|object $source Source of replacement name=>value pairs.
+		 * @return string The new URL.
+		 * @example <code>
+		 *            // echoes '/products/food/brown-bread/45'
+		 *            echo struct_build('/products/%category%/%name%/%id%',array('category'=>'Food','name'=>'Brown Bread'),'id'=>45));
+		 *          </code>
+		 */
+		public static function struct_build($structure,$source=array()){
+			foreach($source as $name=>$value){
+				unset($source[$name]);
+				if(is_scalar($value)) // if not an object/array...
+					$source['%'.$name.'%']=strtolower(Security::stoident($value,'-'));
+			}
+			return str_replace(array_keys($source),array_values($source),$structure);
 		}
 	}
 	

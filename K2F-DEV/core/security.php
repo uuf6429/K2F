@@ -43,6 +43,7 @@
 	 * @version 19/09/2010
 	 *          31/12/2010 - Added $ignoreChars parameter to Security::filename().
 	 *          18/03/2011 - Method `stoident` should perform better now.
+	 *          07/04/2011 - Fixed method `stoident` to handle when something else than a string was passed.
 	 */
 	class Security {
 		/**
@@ -260,6 +261,7 @@
 		 * @return string The new string.
 		 */
 		public static function stoident($orig,$replace='_'){
+			$orig=(string)$orig; // input failsafe
 			for($i=0; $i<strlen($orig); $i++){
 				$o=ord($orig{$i});
 				if(!(  (($o>=48) && ($o<=57))			// numbers

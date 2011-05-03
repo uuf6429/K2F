@@ -331,7 +331,22 @@
 					}
 					var k2fajax=null;
 					function k2f_popup(url){
-						jQuery('#keenfbh').attr('href',url).click();
+						// add URL if args
+						if(url.substring(0,4)!='http')
+							url=(location.href.indexOf('?')==-1 ? location.href : location.href.substr(0,location.href.indexOf('?')))+url;
+						// remove anchor crap
+						if(url[url.length-1]=='#')
+							url=url.substring(0,url.length-1); // remove #
+						// show fancybox and post
+						jQuery.fancybox.showActivity();
+						jQuery.post(
+url,
+//url.substr(0,url.indexOf('?'))+'?option=com_k2f', // joomla $_GET[option] hotfix
+//url.substr(url.indexOf('?')+1),
+							function(data){
+								jQuery.fancybox(data);
+							}
+						);
 					}
 					function k2f_submit(elem,action){
 						// compute some variables...
@@ -382,7 +397,7 @@
 						// - replaces all <tbody>s of current page with the new HTML using DOM
 						// todo: maybe do this via POST for cases like pagination
 						if(typeof url=='undefined')url=location.href;
-						return jQuery.get(url,function(data){
+						return jQuery.post(url.substr(0,url.indexOf('?')),url.substr(url.indexOf('?')+1),function(data){
 							// get list of checked checkboxes with an id
 							var cbs=[];
 							jQuery('input[type=checkbox]:checked').each(function(){ cbs.push(jQuery(this).attr('id')) });
@@ -422,9 +437,9 @@
 						});
 						var url=location.href+'<?php
 							echo (count($callback)==2) ? Ajax::url($callback[0],$callback[1],'&') : '&k2f-notajax';
-							?>&k2f-table='+(tbl.replace('k2f-al-','')*1)+'&k2f-action='+encodeURIComponent(action)+ids;
+							?>&k2f-table='+(tbl.replace('k2f-al-','')*1)+'&k2f-action='+encodeURIComponent(action);
 						jQuery('.k2f-adminlist').hide();
-						jQuery.get(url,function(data){
+						jQuery.post(url,ids.substring(1),function(data){
 							jQuery('#k2f-nopopup').html(data);
 							jQuery('#k2f-nopopup').show();
 						});
@@ -447,7 +462,7 @@
 							?>&k2f-table='+tbl+'&k2f-action='+encodeURIComponent(action)+'&k2f-checked[]='+(id*1);
 						/*if(window['k2f-options-'+tbl].indexOf('nopopup:'+action)!=-1){
 							jQuery('.k2f-adminlist').hide();
-							jQuery.get(url,function(data){
+							jQuery.post(url,function(data){
 								jQuery('#k2f-nopopup').html(data);
 								jQuery('#k2f-nopopup').show();
 							});
@@ -748,8 +763,7 @@
 		if(isset($_REQUEST['k2facm'])){
 			// show page content
 			ob_start(); $found=false;
-			?><a href="" id="keenfbh" style="display:none;"><!----></a>
-			<script type="text/javascript">
+			?><script type="text/javascript">
 				var ksbo=submitbutton;
 				submitbutton=function(task){
 					var cbs=[];
@@ -759,14 +773,6 @@
 						.replace('thek2fmethod',encodeURIComponent(jQuery('#k2f-mtd').val()))
 						+'&k2f-table=1&k2f-action='+encodeURIComponent(task)+'&'+cbs.join('&')+'&random='+Math.random());
 				}
-				jQuery(document).ready(function(){
-					jQuery('#keenfbh').fancybox({
-						"modal":false,
-						"width":500,
-						"height":300,
-						"padding":1
-					});
-				});
 			</script><?php
 			// BEGIN joomla hack to make wysiwyg editors work
 			ob_start(); JFactory::getEditor()->display('k2fdummy','','10','10','20','20',true,array()); ob_get_clean();

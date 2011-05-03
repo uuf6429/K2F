@@ -1,6 +1,6 @@
 <?php defined('K2F') or die;
 
-	uses('core/debug.php');
+	uses('core/debug.php','core/events.php');
 
 	/**
 	 * A class which abstracts AJAX calls to static class methods.
@@ -14,6 +14,8 @@
 	 *          09/01/2011 - A small hotfix to ensure handle() is always called once.
 	 *          09/01/2011 - handle() can be made to return instead of echo result.
 	 *          04/03/2011 - A hotfix has been issued to prevent unexpected redirection on output as well as setting ajax http status to 200.
+	 *          12/04/2011 - A hotfix to allow people to cancel ajac call be unsetting $_REQUEST['ajax'].
+	 *          15/04/2011 - Changed "?ajax..." to "?ajax=1" (old one didn't work in POST).
 	 */
 	class Ajax implements Debugable {
 		protected static $handled=false;
@@ -96,7 +98,7 @@
 					$_REQUEST = array_map( 'stripslashes_deep', $_REQUEST );
 				}
 				// ensure nothing was echoed up till now
-				if(ob_get_level()>0)ob_end_clean();
+				if(ob_get_level())ob_end_clean();
 				// handle request
 				$cls=isset($_REQUEST['cls']) ? $_REQUEST['cls'] : '';
 				$mtd=isset($_REQUEST['mtd']) ? $_REQUEST['mtd'] : '';
@@ -119,7 +121,7 @@
 		 *   &lt;/script&gt;
 		 */
 		public static function url($class,$method,$startChar='?'){
-			return $startChar.'ajax&cls='.urlencode($class).'&mtd='.urlencode($method);
+			return $startChar.'ajax=1&cls='.urlencode($class).'&mtd='.urlencode($method);
 		}
 		/**
 		 * This returns whether ajax mode is on or not.
@@ -133,10 +135,11 @@
 		 * Similar to handle, this one renders the output and dies right here.
 		 */
 		public static function render(){
+			while(ob_get_level())ob_end_clean();								// weird joomla hotfix
 			$result=self::handle(true);
 			if(function_exists('header_remove'))header_remove('Location');		// hotfix for location getting set for some dumb reason
 			header('HTTP/1.0 200 OK',true,200);									// hotfix for location and http://bugs.php.net/bug.php?id=25044
-			die($result);
+			if(Ajax::is_on())die($result);
 		}
 		/**
 		 * Returns debug data.
@@ -146,7 +149,7 @@
 		}
 	}
 
-	// if ajax flag is set, process ajax request after loading
-	if(Ajax::is_on())register_shutdown_function(array('Ajax','render'));
+	// if ajax flag is set, process ajax request after booting
+	if(Ajax::is_on())Events::add('on_after_boot',array('Ajax','render'));
 
 ?>
