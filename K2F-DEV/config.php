@@ -1,5 +1,5 @@
 <?php defined('K2F') or die;
-
+	
 	/**
 	 * This is your own configuration file.
 	 * @copyright 2011 Covac Software
