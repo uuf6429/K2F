@@ -6,7 +6,7 @@
 	 * @author Christian Sciberras
 	 * @version 28/08/2010
 	 */
-
+	 
 	/**
 	 * By default, we're in Malta! How's that for some patriotism, eh?
 	 */
