@@ -12,6 +12,8 @@
 	 *   01/01/2011 - Rewritten the class from scratch.
 	 *   25/02/2011 - Identified error exit code for when libraries on windows are not found (thanks to Mrugendra Bhure).
 	 *   21/03/2011 - _pipeExec hotfix (in K2F as well) to fix large output crash (thanks to Michal Charemza).
+	 *   09/05/2011 - Added set_footer() / set_header() functionality to WKTOPDF.
+	 *   09/05/2011 - Made $result public to allow inspection of execution results.
 	 */
 
 	uses('core/system.php','core/mime.php');
@@ -73,9 +75,9 @@
 		 */
 		protected $source=null;
 		/**
-		 * @var array|null When rendered, this is the executable STD responses.
+		 * @var array|null When rendered, this is the executable STD responses. It is public to allow inspection of responses.
 		 */
-		protected $result=null;
+		public $result=null;
 		
 		/// UTILITY METHODS ///
 		
@@ -123,7 +125,7 @@
 		 * @param string $suffix (Optional) Some text added at the end of file (such as file extension).
 		 */
 		protected static function tmp($prefix='',$suffix=''){
-			return System::temporary(System::TMP_FILE,sys_get_temp_dir(),$prefix,$suffix,false);
+			return System::temporary(System::TMP_FILE,sys_get_temp_dir(),$prefix,$suffix,true);
 		}
 		/**
 		 * Builds and returns the command line string for execution.
@@ -601,6 +603,22 @@
 		 * @var float|null The page zoom factor. Default value is 1.
 		 */
 		protected $zoom=null;
+		/**
+		 * @var string|null URL to header HTML file.
+		 */
+		protected $header=null;
+		/**
+		 * @var string|null URL to footer HTML file.
+		 */
+		protected $footer=null;
+		/**
+		 * @var string|null Header height.
+		 */
+		protected $header_height=null;
+		/**
+		 * @var string|null Footer height.
+		 */
+		protected $footer_height=null;
 
 		/// UTILITY METHODS ///
 
@@ -635,6 +653,10 @@
 				if($this->login[1])$cmd.=' --password '.escapeshellarg($this->login[1]);
 			}
 			if($this->zoom!==null)$cmd.=' --zoom '.(float)$this->zoom;
+			if($this->header!==null)$cmd.=' --header-html '.escapeshellarg($this->header);
+			if($this->footer!==null)$cmd.=' --footer-html '.escapeshellarg($this->footer);
+			if($this->header_height!==null)$cmd.=' --header-spacing '.escapeshellarg($this->header_height);
+			if($this->footer_height!==null)$cmd.=' --footer-spacing '.escapeshellarg($this->footer_height);
 			// Return generated cmd
 			return $cmd.' --output-format pdf --enable-local-file-access --no-outline '.$this->source.' -';
 		} //                               '-- maybe make it an option?
@@ -714,6 +736,50 @@
 		 */
 		public function set_zoom($factor=null){
 			$this->zoom=$factor;
+		}
+		/**
+		 * Set the source used to generate a page header.
+		 * @param integer $type Type of source (see SRC_* constants).
+		 * @param mixed $source The source (value depends on type).
+		 */
+		public function set_header($type=self::SRC_HTML,$source=''){
+			if($type==self::SRC_FILE)
+				$source=str_replace('\\','/','file:///'.$source);
+			if($type!=self::SRC_URL){
+				$tmp=self::tmp('hdr','.html');
+				file_put_contents($tmp,$source);
+				$source=str_replace('\\','/','file:///'.$tmp);
+			}
+			$this->header=$source;
+		}
+		/**
+		 * Set the source used to generate a page footer.
+		 * @param integer $type Type of source (see SRC_* constants).
+		 * @param mixed $source The source (value depends on type).
+		 */
+		public function set_footer($type=self::SRC_HTML,$source=''){
+			if($type==self::SRC_FILE)
+				$source=str_replace('\\','/','file:///'.$source);
+			if($type!=self::SRC_URL){
+				$tmp=self::tmp('ftr','.html');
+				file_put_contents($tmp,$source);
+				$source=str_replace('\\','/','file:///'.$tmp);
+			}
+			$this->footer=$source;
+		}
+		/**
+		 * Set the header's height.
+		 * @param string $size The size as a string (eg: 10mm).
+		 */
+		public function set_header_height($size=null){
+			$this->header_height=$source;
+		}
+		/**
+		 * Set the footer's height.
+		 * @param string $size The size as a string (eg: 10mm).
+		 */
+		public function set_footer_height($size=null){
+			$this->footer_height=$source;
 		}
 		/**
 		 * Return image with various options.
