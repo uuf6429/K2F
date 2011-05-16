@@ -58,7 +58,7 @@
 		}
 		return (ceil($size*100)/100).' '.$type[$i];
 	}
-
+	
 	CFG::set(array(
 		/**
 		 * The salt is a 32 byte (characters) used in several security mechanisms
