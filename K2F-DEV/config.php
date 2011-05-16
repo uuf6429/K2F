@@ -2,7 +2,7 @@
 
 	/**
 	 * This is your own configuration file.
-	 * @copyright 2010 Covac Software
+	 * @copyright 2011 Covac Software
 	 * @author Christian Sciberras
 	 * @version 28/08/2010
 	 */
