@@ -32,6 +32,7 @@
 		}
 		return $ret;
 	}
+	
 	/**
 	 * Utility function to return the common part between two strings (from right).
 	 * @param string $str1 The first string.
