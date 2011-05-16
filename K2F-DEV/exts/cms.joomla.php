@@ -730,10 +730,12 @@ url,
 				}
 			?>}</script><?php
 		}
-		?><script type="text/javascript" src="http://code.jquery.com/jquery.min.js"></script>
-		<script type="text/javascript" src="<?php echo Security::snohtml(Ajax::url('CmsHost_joomla','_jquery_fancy_box')); ?>&amp;name=jquery.fancybox-1.3.4.pack.js"></script>
-		<link rel="stylesheet" type="text/css" href="<?php echo Security::snohtml(Ajax::url('CmsHost_joomla','_jquery_fancy_box')); ?>&amp;name=jquery.fancybox-1.3.4.pack.css" media="screen" />
-		<script type="text/javascript">jQuery.noConflict();</script><?php
+		?><script type="text/javascript" src="http://code.jquery.com/jquery.min.js"></script><?php
+		if(JFactory::getApplication()->isAdmin()){
+			?><script type="text/javascript" src="<?php echo Security::snohtml(Ajax::url('CmsHost_joomla','_jquery_fancy_box')); ?>&amp;name=jquery.fancybox-1.3.4.pack.js"></script>
+			<link rel="stylesheet" type="text/css" href="<?php echo Security::snohtml(Ajax::url('CmsHost_joomla','_jquery_fancy_box')); ?>&amp;name=jquery.fancybox-1.3.4.pack.css" media="screen" /><?php
+		}
+		?><script type="text/javascript">jQuery.noConflict();</script><?php
 		//// <--TEMPORARY HACK ////
 		$html=ob_get_clean();
 		$doc=&JFactory::getDocument();

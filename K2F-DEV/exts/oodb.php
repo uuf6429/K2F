@@ -30,6 +30,7 @@
 	 *          22/02/2011 - Fixed DatabaseRows->count(); missed argument 1 (table) of Database->rows_count().
 	 *          22/02/2011 - Fixed DatabaseRows->load(); missed setting $this->loaded flag.
 	 *          25/04/2011 - Replaced most (array)$obj typecasts with get_object_vars($obj) function due to "\0*\0" property bug.
+	 *          08/05/2011 - Add feature to DatabaseRows->load() to be able to accept an array of integer IDs.
 	 *          00/00/T0D0 - May work with variable named unique column (used to be "id").
 	 */
 	class DatabaseRow {
@@ -208,8 +209,9 @@
 		}
 		/**
 		 * Loads a set of objects from the database.
-		 * @param string $condition A simple SQL expression used to specify which objects to load.<br>
-		 *                          <b>NB:</b> Be sure not to use anything specific to any database system!
+		 * @param string|array $condition A simple SQL expression used to specify which objects to load.<br>
+		 *                                <b>NB:</b> Be sure not to use anything specific to any database system!
+		 *                                If an array, this will serve as a list of integer IDs used to load items from the server.
 		 * @param string $class The class name the newly loaded objects are typcasted to. It works as following:
 		 * <br> - if $class is set and descends from DatabaseRow, it is used
 		 * <br> - if $class is not set, it attempts to find __CLASS__ but without the final 's' (dbos->dbo)
@@ -236,6 +238,12 @@
 			// ensure the class descends from DatabaseRow
 			if(!in_array('DatabaseRow',$p) || $class=='DatabaseRow')
 				xlog('Error: You should have a class named "'.substr(get_class($this),0,-1).'", but it could not be found.');
+			// if the condition is an array, it will serve as a list of IDs
+			if(is_array($condition)){
+				// TODO: Make sure this mysql code is as cross-sql as possible (while at it, also check "`id` IN (1,2,N)" syntax)
+				foreach($condition as $k=>$id)$condition[$k]='`id`='.(int)$id;
+				$condition=implode(' OR ',$condition);
+			}
 			// load each row, throw it into custom class and finally add it the $this->rows
 			foreach(Database::db()->rows_load($this->table(),$condition) as $row)
 				$this->rows[]=new $class($row);

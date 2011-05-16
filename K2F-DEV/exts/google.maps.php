@@ -14,8 +14,8 @@
 		public static $USING_SENSOR=false;
 		public static $USED_LIBRARIES=array();
 		private static $INITTED=false;
-		public static function init(){
-			if(!self::$INITTED){
+		public static function init($force=false){
+			if(!self::$INITTED || $force){
 				$args=array(
 					'sensor'=>self::$USING_SENSOR ? 'true' :'false',
 					'libraries'=>implode(',',self::$USED_LIBRARIES)
