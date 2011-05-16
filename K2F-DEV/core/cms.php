@@ -94,17 +94,18 @@
 		 * Generates a URL given structure and source array.
 		 * @param string $structure The new URL structure to follow.
 		 * @param array|object $source Source of replacement name=>value pairs.
+		 * @param boolean $sef_encode Whether to use SEF encoding (lossy but search engine friendly) or traditional url encoding.
 		 * @return string The new URL.
 		 * @example <code>
 		 *            // echoes '/products/food/brown-bread/45'
 		 *            echo struct_build('/products/%category%/%name%/%id%',array('category'=>'Food','name'=>'Brown Bread'),'id'=>45));
 		 *          </code>
 		 */
-		public static function struct_build($structure,$source=array()){
+		public static function struct_build($structure,$source=array(),$sef_encode=true){
 			foreach($source as $name=>$value){
 				unset($source[$name]);
 				if(is_scalar($value)) // if not an object/array...
-					$source['%'.$name.'%']=strtolower(Security::stoident($value,'-'));
+					$source['%'.$name.'%']=$sef_encode ? strtolower(Security::stoident($value,'-')) : urlencode($value);
 			}
 			return str_replace(array_keys($source),array_values($source),$structure);
 		}

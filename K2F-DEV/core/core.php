@@ -358,6 +358,19 @@
 	}
 
 	/**
+	 * Returns whether $array is an associative array ( array(1=>'a','c'=>'d') ) or not ( array(1,'a',5) ).
+	 * @param array $array The array to check.
+	 * @return boolean True if associative, false otherwise.
+	 * @example <code>
+	 *     echo is_assoc( array('a'=>'b') )    ? 'yes' : 'no';  // prints 'yes'
+	 *     echo is_assoc( array('a','b','c') ) ? 'yes' : 'no';  // prints 'no'
+	 * </code>
+	 */
+	function is_assoc($array){
+		return array_keys($array) !== range(0, count($array) - 1);
+	}
+
+	/**
 	 * Wrap script tag around some (presumably) javascript code.
 	 * @param string $javascript The javascript to wrap.
 	 * @return string HTMLized javascript.
