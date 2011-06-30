@@ -9,3 +9,9 @@
 ehthumbs.db
 Icon?
 Thumbs.db
+
+# Zend Studio stuff #
+#####################
+.project
+.buildpath
+.settings/
