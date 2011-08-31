@@ -9,7 +9,7 @@
 
 		$pdf=new WKPDF();
 
-		$pdf->set_source(WKPDF::SRC_URL, 'fake://google.com/');
+		$pdf->set_source(WKPDF::SRC_URL, 'http://google.com/');
 		
 		if(!$pdf->render())
 			throw new Exception('Fatal: render failed.');
