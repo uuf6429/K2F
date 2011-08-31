@@ -31,13 +31,54 @@
 	 *          22/02/2011 - Fixed DatabaseRows->load(); missed setting $this->loaded flag.
 	 *          25/04/2011 - Replaced most (array)$obj typecasts with get_object_vars($obj) function due to "\0*\0" property bug.
 	 *          08/05/2011 - Add feature to DatabaseRows->load() to be able to accept an array of integer IDs.
-	 *          00/00/T0D0 - May work with variable named unique column (used to be "id").
+	 *          22/06/2011 - Replaced DB type TEXT with LONGTEXT. Shouldn't this change be put in database.mysql.php instead?!?!
+	 *          22/07/2011 - Added loaded() saved() inserted() updated() delete() methods to DatabaseRow.
+	 *          22/07/2011 - Replaced $loaded in DatabaseRows with $_op_loaded and added $_op_saved, $_op_deleted + methods. 
+	 * @todo Make it so it may work with variably named unique column (used to be "id").
+	 * @todo Make DatabaseRow implemenet CRUD interface for load/save/delete.
 	 */
 	class DatabaseRow {
 		/**
 		 * @var integer Database row id. If 0 (or less), it means this is a new row.
 		 */
 		public $id=0;
+		/**
+		 * @var boolean Operation flags.
+		 */
+		private $_op_loaded = false;
+		private $_op_inserted = false;
+		private $_op_updated = false;
+		private $_op_deleted = false;
+		/**
+		 * @return boolean True if object was loaded form DB.
+		 */
+		public function is_loaded(){
+			return $this->_op_loaded;
+		}
+		/**
+		 * @return boolean True if object was inserted into DB.
+		 */
+		public function is_inserted(){
+			return $this->_op_inserted;
+		}
+		/**
+		 * @return boolean True if object was updated in DB.
+		 */
+		public function is_updated(){
+			return $this->_op_updated;
+		}
+		/**
+		 * @return boolean True if object was saved to DB.
+		 */
+		public function is_saved(){
+			return $this->_op_inserted || $this->_op_updated;
+		}
+		/**
+		 * @return boolean True if object was deleted from DB.
+		 */
+		public function is_deleted(){
+			return $this->_op_deleted;
+		}
 		/**
 		 * Creates new instance, and initilizes properties.
 		 * @param integer|stdClass|array $source
@@ -70,7 +111,7 @@
 				: $GLOBALS['K2F-OODB-COLCACHE'][$this->table()]=Database::db()->cols_all($this->table());
 			foreach(get_object_vars($this) as $prop=>$val)
 				if($prop{0}!='_' && !isset($cols[$prop])){
-					$type='text'; // anything can be serialized to text!
+					$type='longtext'; // anything can be serialized to text!
 					if(is_int($val))$type='int';
 					if(is_float($val))$type='float';
 					if(is_bool($val))$type='bit'; // should be "bool" or "boolean", but "bit" is more supported(?)
@@ -125,10 +166,10 @@
 								}else $this->$prop=$value; // cannot determine data type...
 							}else $this->$prop=$value; // no such property in subclass...
 						}
-					return true;
+					return $this->_op_loaded=true;
 				}
-				return false;
 			}
+			return $this->_op_loaded=false;
 		}
 		/**
 		 * Saves object to database (inserting or updating as required).
@@ -153,9 +194,13 @@
 				if(is_array($result))$result=isset($result[0]) ? $result[0] : 0;
 				if($result>0)$this->id=$result;
 				$result=$result>0;
+				$this->_op_inserted=$result;
+				$this->_op_updated=false;
 			}else{
 				// update
 				$result=Database::db()->rows_update($this->table(),$save,'id');
+				$this->_op_inserted=false;
+				$this->_op_updated=$result;
 			}
 			return $result;
 		}
@@ -170,9 +215,9 @@
 				foreach(get_object_vars($tmp) as $k=>$v)
 					if($k!='id')$this->$k=$v;
 				// delete from db
-				return Database::db()->rows_delete($this->table(),$this,'id');
+				return $this->_op_deleted=array_shift(Database::db()->rows_delete($this->table(),$this,'id'));
 			}
-			return false;
+			return $this->_op_deleted=false;
 		}
 		/**
 		 * You MUST override this in your class!
@@ -190,9 +235,29 @@
 		 */
 		public $rows=array();
 		/**
-		 * @var boolean Holds whether stuff was loaded or not.
+		 * @var boolean Operation flags.
 		 */
-		protected $loaded=false;
+		private $_op_loaded = false;
+		private $_op_saved = false;
+		private $_op_deleted = false;
+		/**
+		 * @return boolean True if object was loaded form DB.
+		 */
+		public function is_loaded(){
+			return $this->_op_loaded;
+		}
+		/**
+		 * @return boolean True if object was saved to DB.
+		 */
+		public function is_saved(){
+			return $this->_op_saved;
+		}
+		/**
+		 * @return boolean True if object was deleted from DB.
+		 */
+		public function is_deleted(){
+			return $this->_op_deleted;
+		}
 		/**
 		 * Utility function to singularize a plural word.
 		 * @param string $word The original word in plural form.
@@ -222,7 +287,7 @@
 		*/
 		public function load($condition='1',$class=null){
 			// flip flag
-			$this->loaded=true;
+			$this->_op_loaded=true;
 			// ensure table exists
 			if(!$GLOBALS['K2F-OODB-TBLCACHE'])
 				$GLOBALS['K2F-OODB-TBLCACHE']=Database::db()->table_all();
@@ -255,7 +320,8 @@
 		 * @return array A list of boolean values for each row specifying if it was saved.
 		 */
 		public function save(){
-			if(!$this->loaded)return false;
+			if(!$this->_op_loaded)return false;
+			$this->_op_saved=true;
 			$res=array();
 			foreach($this->rows as $row)
 				$res[]=DatabaseRow($row)->save();
@@ -266,7 +332,8 @@
 		 * @return array A list of boolean values for each row specifying if it was deleted.
 		 */
 		public function delete(){
-			if(!$this->loaded)return false;
+			if(!$this->_op_loaded)return false;
+			$this->_op_deleted=true;
 			$res=array();
 			foreach($this->rows as $row)
 				$res[]=DatabaseRow($row)->delete();
@@ -285,7 +352,7 @@
 		 * @return integer The number of loaded items.
 		 */
 		public function count(){
-			return $this->loaded ? count($this->rows) : Database::db()->rows_count($this->table());
+			return $this->_op_loaded ? count($this->rows) : Database::db()->rows_count($this->table());
 		}
 	}
 

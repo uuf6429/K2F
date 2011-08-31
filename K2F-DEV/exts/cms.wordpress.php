@@ -18,6 +18,13 @@
 		// add submenu
 		// render adminlist
 		protected static $pagecounter=0;
+		protected static $_adminlist_scol='';
+		protected static $_adminlist_sord='';
+		public function _adminlist_order($a,$b){
+			$col=self::$_adminlist_scol;
+			if($a->$col==$b->$col)return 0;
+			return ($a->$col<$b->$col) ? self::$_adminlist_sord*-1 : self::$_adminlist_sord*1;
+		}
 		public function adminlist($rows=array(),$colkey='id',$columns=array(),$options=array(),$actions=array(),$handler='',$emptymsg='No items found'){
 			// perform search filter on $rows, if not empty
 			if(count($rows) && isset($_REQUEST['k2f-search']) && ($search=trim($_REQUEST['k2f-search']))!=''){
@@ -40,6 +47,12 @@
 						}
 					if(!$found)unset($rows[$i]);
 				}
+			}
+			// perform ordering, if needed
+			if(count($rows) && isset($_REQUEST['k2f-scol']) && isset($_REQUEST['k2f-sord']) && isset($rows[0]->{$_REQUEST['k2f-scol']})){
+				self::$_adminlist_scol=$_REQUEST['k2f-scol'];
+				self::$_adminlist_sord=$_REQUEST['k2f-sord']=='a' ? 1 : -1;
+				uasort($rows,array(__CLASS__,'_adminlist_order'));
 			}
 			// perform pagination, if needed
 			$p = isset($_REQUEST['k2f-page']) ? (int)$_REQUEST['k2f-page'] : 0;
@@ -71,7 +84,26 @@
 							?><th class="manage-column check-column" scope="col">&nbsp;</th><?php
 						}
 						foreach($columns as $key=>$column){
-							?><th class="manage-column" style="<?php echo is_array($column) ? $column[1] : ''; ?>" scope="col"><?php echo Security::snohtml(is_array($column) ? $column[0] : $column); ?></th><?php
+							$is_ext=is_array($column);
+							$is_srt=$is_ext && is_array($column) && isset($column[2]) && $column[2];
+							$is_cur=isset($_REQUEST['k2f-scol']) ? $_REQUEST['k2f-scol']==$key : '';
+							$mode=($is_cur && isset($_REQUEST['k2f-sord']) && $_REQUEST['k2f-sord']=='a') ? 'ASC' : 'DESC';
+							?><th class="manage-column<?php
+							  if($is_srt)echo ' sortable '.strtolower($mode);
+							  if($is_cur)echo ' sorted';
+							  ?>" style="<?php echo $is_ext ? (isset($column[1]) ? $column[1] : '') : ''; ?>" scope="col">
+								<input type="hidden" name="colname" value="<?php echo Security::snohtml($key); ?>"/><?php
+								// if sortable...
+								if($is_srt){
+									?><a href="javascript:;" onclick="k2f_toggle_order(this);"><span><?php
+								}
+								// write contents
+								echo Security::snohtml($is_ext ? $column[0] : $column);
+								// if sortable...
+								if($is_srt){
+									?></span><span class="sorting-indicator" style="display: block;"></span></a><?php
+								}
+							?></th><?php
 						}
 					?></tr><?php
 				}
@@ -191,7 +223,8 @@
 		}
 		public function url_to_menu($menu,$args=array()){
 			foreach($args as $k=>$v)$args[$k]='&'.$k.'='.urlencode($v);
-			return 'admin.php?page=k2f_'.(int)$menu.implode('',$args);
+									//    v------ wordpress bug hotfix for when subitem relates to parent
+			return 'admin.php?page=k2f_'.($menu-1==self::$menu_list[$menu][0] ? self::$menu_list[$menu][0] : $menu).implode('',$args);
 		}
 		public function config_get($key){
 			return get_option('k2f_'.$key);
@@ -215,6 +248,24 @@
 				</style><script type="text/javascript">
 					var k2f_refresh_ajax=null;
 					var k2f_page=0;
+					function k2f_toggle_order(el){
+						// get current column
+						var col=jQuery(el).parents('th:first');
+						var head=jQuery(el).parents('table').find('thead th:eq('+col.index()+')');
+						var foot=jQuery(el).parents('table').find('tfoot th:eq('+col.index()+')');
+						// if already selected and desc, switch to asc
+						var ord=col.is('.sorted.asc') ? 'desc' : 'asc';
+						// remove "sorted" class and reset ordering of each column
+						jQuery(el).parents('table').find('thead th').removeClass('sorted').removeClass('asc').addClass('desc');
+						jQuery(el).parents('table').find('tfoot th').removeClass('sorted').removeClass('asc').addClass('desc');
+						// add "sorted" and order classes to this column
+						head.addClass('sorted').removeClass('desc').addClass(ord);
+						foot.addClass('sorted').removeClass('desc').addClass(ord);
+						// TODO: show loader
+						k2f_reload(el,function(){
+							// TODO: hide loader
+						});
+					}
 					function k2f_pgnation_page(el,p){
 						k2f_page=p*1;
 						jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').show();
@@ -231,8 +282,11 @@
 					function k2f_reload(el,ondone){
 						// define and compute some variables
 						var s=jQuery(el).parents('.k2f-adminlist').find('.k2f-search').val();
+						var col=jQuery(el).parents('.k2f-adminlist').find('th.sorted:first');
+						var cnm=encodeURIComponent(col.find('input').val());
 						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-page','k2f-ign');
-						url+='&k2f-search='+encodeURIComponent(s)+"&k2f-page="+k2f_page;
+						url+='&k2f-search='+encodeURIComponent(s)+"&k2f-page="+k2f_page; // search & pagination
+						url+='&k2f-scol='+cnm+"&k2f-sord="+(col.is('.asc') ? 'a' : 'd');   // sort column & sort order
 						// stop existing requests
 						if(k2f_refresh_ajax && k2f_refresh_ajax.readyState!=0){
 							k2f_refresh_ajax.abort();
@@ -290,7 +344,7 @@
 						// compute some variables...
 						var s=jQuery('.k2f-search').val(); // this is not threadsafe! (multiple tables)
 						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-page','k2f-ign');
-						url+='&k2f-search='+encodeURIComponent(s)+"&k2f-page="+k2f_page;
+						url+='&k2f-search='+encodeURIComponent(s)+"&k2f-page="+k2f_page; // TODO: ADD SORTING BELOW
 						// wordpress iframe hack: move html to textarea
 						jQuery('iframe.k2f-richedit').each(function(){
 							var id=jQuery(this).attr('id').replace('k2f-','');  // id of textarea and richedit
@@ -319,7 +373,11 @@
 									if(jQuery('#TB_ajaxContent').length==0)
 										jQuery('#k2f-nopopup').html(data);
 									// refresh page (well, parts of it)
-									k2f_refresh(url);
+									k2f_refresh(url,function(){
+										if(action.indexOf('delete')!=-1 || action.indexOf('remove')!=-1){
+											jQuery('input[type=checkbox]:checked').attr('checked',false);
+										}
+									});
 								});
 							}
 						}else{
@@ -373,11 +431,13 @@
 								})
 						});
 					}
-					function k2f_edit(link,id,action){
-						var tbl=jQuery(jQuery(link).parents('.k2f-adminlist')[0]).attr('id').replace('k2f-al-','')*1;
+					function k2f_edit(link,id,action,extra){
+						if(typeof extra=='undefined')extra='';
+						var tbl=jQuery(link).parents('.k2f-adminlist');
+						tbl = tbl.length ? jQuery(tbl[0]).attr('id').replace('k2f-al-','')*1 : 1;
 						var url=location.href+'<?php
 							echo (count($callback)==2) ? Ajax::url($callback[0],$callback[1],'&') : '&k2f-notajax';
-							?>&k2f-table='+tbl+'&k2f-action='+encodeURIComponent(action)+'&k2f-checked[]='+(id*1);
+							?>&k2f-table='+tbl+'&k2f-action='+encodeURIComponent(action)+'&k2f-checked[]='+(id*1)+extra;
 						if(window['k2f-options-'+tbl].indexOf('nopopup:'+action)!=-1){
 							jQuery('.k2f-adminlist').hide();
 							jQuery.post(url,function(data){
@@ -491,7 +551,7 @@
 		public function popup_begin($title,$hint,$width=0,$height=0,$callback=array()){
 			self::$hints[]=$hint;
 			?><script type="text/javascript">jQuery('#TB_ajaxWindowTitle').html(<?php echo @json_encode($title); ?>);</script>
-			<form id="<?php echo Security::snohtml($id); ?>" class="type-form" action="<?php
+			<form id="<?php //echo Security::snohtml($id); ?>" class="type-form k2f-adm-frm" action="<?php
 				echo '?page='.Security::snohtml(urlencode($_REQUEST['page'])).((count($callback)==2)
 						? Ajax::url($callback[0],$callback[1],'&') : '&k2f-notajax').'&k2f-table='.(int)$_REQUEST['k2f-table'];
 				?>" method="post" style="display:inline-block; width:630px;">
@@ -771,7 +831,7 @@
 		foreach(CmsHost_wordpress::$menu_list as $id=>$item){
 			list($pid,$name,$text,$icons,$handler)=$item;
 			if($pid===null){ // main-item
-				add_menu_page($name,$name,$can,'k2f_'.$id,$handler,$icons->_16);
+				add_menu_page($name,$name,$can,'k2f_'.$id,$handler,$icons ? $icons->_16 : '');
 				$main['k2f_'.$id]=implode('.',$handler); // main plugin page hotfix
 			}else{ // sub-item
 				// the following line is for main plugin page hotfix
@@ -780,7 +840,7 @@
 					$nid='k2f_'.$pid;
 					unset($main['k2f_'.$pid]);
 				}
-				add_submenu_page('k2f_'.$pid,$name,$name,$can,$nid,$handler,$icons->_16);
+				add_submenu_page('k2f_'.$pid,$name,$name,$can,$nid,$handler,$icons ? $icons->_16 : '');
 			}
 		}
 	}
@@ -824,7 +884,41 @@
 	}
 	function k2f_wp_admin_head(){
 		// this hotfix fixes a bug where when we load the media, "Screen Options" box malfunctions.
-		?><style type="text/css">#screen-meta .hidden { height: auto; width: auto; }</style><?php
+		// the second and third lines is a hotfix for table column order icon bug
+		?><style type="text/css">
+			#screen-meta .hidden { height: auto; width: auto; }
+			th span.sorting-indicator { visibility: hidden; }
+			th.sorted .sorting-indicator,th:hover span.sorting-indicator { visibility: visible; }
+			.k2f-adm-frm label { width: 120px; display: inline-block; }
+			.k2f-adm-frm fieldset {
+				position: relative;
+				padding: 1em;
+				border: 1px solid #AAA;
+				background: #F8F8F8;
+				margin: 8px 0;
+				border-radius: 3px;
+				-moz-border-radius: 3px;
+				-o-border-radius: 3px;
+				-webkit-border-radius: 3px;
+			}
+			.k2f-adm-frm legend {
+				color: #000;
+				font-weight: bold;
+				font-size: 13px;
+				padding: 0 4px;		
+				cursor: default;
+			}
+			.k2f-adm-frm .closable legend {			
+				cursor: pointer;
+			}
+			.k2f-adm-frm fieldset input {
+				width: 300px;
+			}
+			.k2f-adm-frm thead th {
+				text-align: left;
+				font-size: 12px;
+			}
+		</style><?php
 		// backend thickbox path hotfix
 		?><script type="text/javascript">
 			if(typeof tb_pathToImage!='string')

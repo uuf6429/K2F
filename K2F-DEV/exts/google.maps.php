@@ -768,6 +768,8 @@
 		public function render($mode=self::AS_HTML){
 			$options=$this->options;
 			if($this->map)$options['map']=$this->map->name();
+			if($this->initialloc[0]=='')$this->initialloc[0]='0';
+			if($this->initialloc[1]=='')$this->initialloc[1]='0';
 			if($this->initialloc)$options['position']='new google.maps.LatLng('.$this->initialloc[0].','.$this->initialloc[1].')';
 			if($mode==self::AS_HTML){ ?><script type="text/javascript"><?php } ?>
 				<?php echo $this->name(); ?> = new google.maps.Marker(<?php echo self::a2o($options); ?>);

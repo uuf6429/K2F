@@ -17,6 +17,12 @@
 			xlog('Warning: You should not run raw queries since they might not be portable.',$query,debug_backtrace());
 			return $this->_run_query($query);
 		}
+		public function raw_result(){
+			xlog('Warning: You should not use raw results since they might not be portable.',$query,debug_backtrace());
+			$rows=array();
+			while(($row=@mysql_fetch_object($this->last_result))!==false)$rows[]=$row;
+			return $rows;
+		}
 		protected function _run_query($query){
 			$this->last_query=$query;
 			$this->last_result=@mysql_query($query,$this->link);
@@ -28,7 +34,7 @@
 		}
 		public function database_all(){
 			$result=@mysql_list_dbs($this->link); $dbs=array();
-			while($row=@mysql_fetch_object($result))$dbs[]=$row->Database;
+			while(($row=@mysql_fetch_object($result))!==false)$dbs[]=$row->Database;
 			return $result;
 		}
 		public function database_exists($database){
@@ -50,7 +56,7 @@
 		public function table_all(){
 			$tables=array();
 			if(self::_run_query('SHOW TABLES')){
-				while($row=@mysql_fetch_object($this->last_result)){
+				while(($row=@mysql_fetch_object($this->last_result))!==false){
 					$row=array_values((array)$row);
 					$tables[]=array_pop($row);
 				}
@@ -68,7 +74,7 @@
 			if($condition!='')$condition=' WHERE '.$condition;
 			$this->_run_query('SELECT * FROM `'.Security::escape($table).'`'.$condition);
 			$rows=array();
-			while(($row=@mysql_fetch_object($this->last_result)))$rows[]=$row;
+			while(($row=@mysql_fetch_object($this->last_result))!==false)$rows[]=$row;
 			return $rows;
 		}
 		public function rows_affected(){
@@ -79,7 +85,7 @@
 			foreach($objects as $i=>$object){
 				$props=(array)get_object_vars($object);
 				$keys='`'.implode('`,`',array_keys($props)).'`';
-				$values='"'.implode('","',Security::escape(array_values($props))).'"';
+				$values=implode(',',Security::escapeQuote(array_values($props)));
 				$objects[$i]=$this->_run_query('INSERT INTO `'.Security::escape($table).'` ('.$keys.') VALUES ('.$values.')');
 				if($objects[$i])$objects[$i]=@mysql_insert_id($this->link);
 			}
@@ -92,21 +98,21 @@
 				$fields=array();
 				foreach(get_object_vars($object) as $prop=>$val)
 					if(!in_array($prop,$unique_prop))
-						$fields[]='`'.Security::escape($prop).'`="'.Security::escape($val).'"';
+						$fields[]='`'.Security::escape($prop).'`='.Security::escapeQuote($val);
 				$fields=implode(', ',$fields);
 				$cond='1';
 				foreach($unique_prop as $key)
-					$cond.=' AND `'.Security::escape($key).'`="'.Security::escape($object->$key).'"';
+					$cond.=' AND `'.Security::escape($key).'`='.Security::escapeQuote($object->$key);
 				$objects[$i]=$this->_run_query('UPDATE `'.Security::escape($table).'` SET '.$fields.' WHERE '.$cond);
 			}
 			return $objects;
 		}
-		public function rows_delete($table,$objects,$unique_prop){
+		public function rows_delete($table,$objects,$unique_props){
 			if(!is_array($objects))$objects=array($objects);
-			if(!is_array($unique_prop))$unique_prop=array((string)$unique_prop);
+			if(!is_array($unique_props))$unique_props=array((string)$unique_props);
 			foreach($objects as $i=>$object){
 				$cond='1';
-				foreach($unique_prop as $key)
+				foreach($unique_props as $key)
 					$cond.=' AND `'.Security::escape($key).'`="'.Security::escape($object->$key).'"';
 				$objects[$i]=$this->_run_query('DELETE FROM `'.Security::escape($table).'` WHERE '.$cond);
 			}
@@ -121,7 +127,7 @@
 		public function cols_all($table){
 			$this->_run_query('SHOW COLUMNS FROM `'.Security::escape($table).'`');
 			$rows=array();
-			while(($row=@mysql_fetch_object($this->last_result))){
+			while($this->last_result && ($row=@mysql_fetch_object($this->last_result))!==false){
 				$row->Type=explode(' ',$row->Type);
 				$rows[$row->Field]=$row->Type[0];
 			}

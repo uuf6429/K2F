@@ -2,6 +2,8 @@
 
 	uses('core/security.php','core/apps.php','core/cms.php','core/events.php');
 
+	// TODO: In the relevant JS code, make sure you append GET parameters BEFORE hash.
+	
 	if(!defined('_JEXEC')){
 		// define dependencies in case of a disaster
 		function jimport(){}
@@ -155,6 +157,13 @@
 		}
 		protected static $pagecounter=0;
 		protected static $paginations=array(5,10,15,20,25,30,50,100,0);
+		protected static $_adminlist_scol='';
+		protected static $_adminlist_sord='';
+		public function _adminlist_order($a,$b){
+			$col=self::$_adminlist_scol;
+			if($a->$col==$b->$col)return 0;
+			return ($a->$col<$b->$col) ? self::$_adminlist_sord*-1 : self::$_adminlist_sord*1;
+		}
 		public function adminlist($rows=array(),$colkey='id',$columns=array(),$options=array(),$actions=array(),$handler='',$emptymsg='No items found'){
 			$rows=(array)$rows;
 			// perform search filter on $rows, if not empty
@@ -179,6 +188,19 @@
 					if(!$found)unset($rows[$i]);
 				}
 			}
+			// perform filtering on rows, if needed
+			if(count($rows))
+				foreach($columns as $key=>$column)
+					if(isset($_REQUEST['k2f-filter-'.$key]))
+						foreach($rows as $id=>$row)
+							if(strval($row->$key)!=strval($_REQUEST['k2f-filter-'.$key]))
+								unset($rows[$id]);
+			// perform ordering, if needed
+			if(count($rows) && isset($_REQUEST['k2f-scol']) && isset($_REQUEST['k2f-sord']) && isset($rows[0]->{$_REQUEST['k2f-scol']})){
+				self::$_adminlist_scol=$_REQUEST['k2f-scol'];
+				self::$_adminlist_sord=$_REQUEST['k2f-sord']=='a' ? 1 : -1;
+				uasort($rows,array(__CLASS__,'_adminlist_order'));
+			}
 			// perform pagination, if needed
 			$p = isset($_REQUEST['k2f-page']) ? (int)$_REQUEST['k2f-page'] : 0;
 			$l = isset($_REQUEST['k2f-limit']) ? (int)$_REQUEST['k2f-limit'] : 20;
@@ -186,10 +208,15 @@
 			$c = ceil($t/$l)-1;
 			if($l>0)$rows = array_splice($rows,$p*$l,$l);
 			$p = max(min($p,$c),0);
-			//die_r("p=$p, t=$t, l=$l, c=".ceil($t/$l));
 			// add global actions buttons to toolbar
 			foreach($actions as $action)self::_make_joom_button($action);
-			?><div class="k2f-adminlist" id="k2f-al-<?php echo self::$pagecounter; ?>">
+			?><script type="text/javascript">
+				jQuery(document).ready(function(){
+					jQuery('#k2f-al-ba-<?php echo self::$pagecounter; ?>-1').val('');
+				});
+				window['k2f-options-<?php echo self::$pagecounter; ?>']=<?php echo @json_encode($options); ?>;
+			</script>
+			<div class="k2f-adminlist" id="k2f-al-<?php echo self::$pagecounter; ?>">
 				<table width="100%">
 					<tr>
 						<td align="left">
@@ -199,7 +226,21 @@
 							<button onclick="return k2f_search_reset(this);" class="k2f-search-reset">Reset</button>
 							<img src="<?php echo Ajax::url(__CLASS__,'_file_data'); ?>&name=loader16.gif" class="k2f-search-throbber" width="16" height="16" alt="Loading..." style="display:none; margin:-4px 0 0 4px; vertical-align:middle;"/>
 						</td>
-						<td align="right"><!--{TODO: Options Filter}--></td>
+						<td align="right" id="k2f-filters">
+							<img src="<?php echo Ajax::url(__CLASS__,'_file_data'); ?>&name=loader16.gif" class="k2f-filter-throbber" width="16" height="16" alt="Loading..." style="display:none; margin:-4px 0 0 4px; vertical-align:middle;"/> <?php
+							foreach($columns as $key=>$column)
+								if(is_array($column) && isset($column[3])){
+									echo '<select name="k2f-filter-'.Security::snohtml($key).'" onchange="k2f_filter(this);">';
+									echo '	<option value="">- Select '.Security::snohtml($column[0]).' -</option>';
+									foreach($column[3] as $val=>$name){
+										echo '<option value="'.Security::snohtml(strval($val)).'"';
+										if(isset($_REQUEST['k2f-filter-'.$key]) && strval($_REQUEST['k2f-filter-'.$key])==strval($val))
+											echo ' selected="selected"';
+										echo '>'.Security::snohtml(ucwords($name)).'</option>';
+									}
+									echo '</select>';
+								}
+						?></td>
 					</tr>
 				</table><table class="adminlist" cellspacing="1">
 					<thead>
@@ -207,7 +248,25 @@
 							if($colkey=='id')echo '<th width="20"> # </th>';
 							if(in_array('multiselect',$options))echo '<th width="20"><input type="checkbox" onclick="k2f_checkall(this);" value="" name="toggle" id="cb-'.self::$pagecounter.'"></th>';
 							if(in_array('singleselect',$options))echo '<th width="20">&nbsp;</th>';
-							foreach($columns as $key=>$column)echo '<th style="'.(is_array($column) ? $column[1] : '').'"><!--a title="Click to sort by this column" href="javascript:tableOrdering(\'c.title\',\'desc\',\'\');"-->'.Security::snohtml(is_array($column) ? $column[0] : $column).'<!--/a--></th>';
+							foreach($columns as $key=>$column){
+								$is_ext=is_array($column);
+								$is_srt=$is_ext && is_array($column) && isset($column[2]) && $column[2];
+								$is_cur=isset($_REQUEST['k2f-scol']) ? $_REQUEST['k2f-scol']==$key : '';
+								$mode=($is_cur && isset($_REQUEST['k2f-sord']) && $_REQUEST['k2f-sord']=='a') ? 'ASC' : 'DESC';
+								?><th style="<?php echo $is_ext && isset($column[1]) ? $column[1] : ''; ?>" class="<?php if($is_cur)echo 'sorted '.strtolower($mode); ?>">
+									<input type="hidden" name="colname" value="<?php echo Security::snohtml($key); ?>"/><?php
+									// if sortable...
+									if($is_srt){
+										?><a href="javascript:;" title="Click to sort by this column" onclick="k2f_toggle_order(this);"><?php
+									}
+									// write contents
+									echo Security::snohtml($is_ext && isset($column[0]) ? $column[0] : $column);
+									// if sortable...
+									if($is_srt){
+										?> <img src="images/sort_<?php echo strtolower($mode); ?>.png" alt="" style="<?php if(!$is_cur)echo 'visibility: hidden;'; ?>"></a><?php
+									}
+								?></th><?php
+							}
 						?></tr>
 					</thead><tfoot>
 						<tr><td colspan="<?php echo count($columns)+($colkey=='id' ? 2 : 1); ?>">
@@ -273,56 +332,42 @@
 			if(self::$pagecounter==0){
 				?><script type="text/javascript">
 					var k2f_refresh_ajax=null;
-					var k2f_pgnation_page=0;
+					var k2f_page=0;
+					function k2f_filter(el){
+						jQuery(el).parents('.k2f-adminlist').find('.k2f-filter-throbber').show();
+						return k2f_reload(el,function(){
+							jQuery(el).parents('.k2f-adminlist').find('.k2f-filter-throbber').hide();
+						});
+					}
+					function k2f_toggle_order(el){
+						// add "sorted" class and toggle order class
+						var col=jQuery(el).parents('th:first');
+						var ord=col.is('.sorted.asc') ? 'desc' : 'asc';
+						jQuery(el).parents('thead').find('th').removeClass('sorted').removeClass('asc').addClass('desc');
+						col.addClass('sorted').addClass(ord);
+						// TODO: show loader
+						k2f_reload(el,function(){
+							// TODO: hide loader
+						});
+					}
 					function k2f_pgnation_limit(el){
-						var l=el.value*1;
-						var s=jQuery(el).parents('.k2f-adminlist').find('.k2f-search-search').val();
-						// stop any previous searches and show throbber
-						if(k2f_refresh_ajax && k2f_refresh_ajax.readyState!=0){
-							k2f_refresh_ajax.abort();
-							k2f_refresh_ajax=null;
-						}
 						jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').css('visibility','visible');
-						// do the search request
-						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-limit','k2f-ign').replace('k2f-page','k2f-ign');
-						url+='&k2f-limit='+l+'&k2f-page='+k2f_pgnation_page+'&k2f-search='+encodeURIComponent(s);
-						k2f_refresh_ajax=k2f_refresh(url,function(){
+						return k2f_reload(el,function(){
 							jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').css('visibility','hidden');
 						});
 					}
 					function k2f_pgnation_page(el,p){
-						var l=jQuery(el).parents('.k2f-adminlist').find('.k2f-page-limit').val()*1;
-						var s=jQuery(el).parents('.k2f-adminlist').find('.k2f-search-search').val();
-						k2f_pgnation_page=p;
-						// stop any previous searches and show throbber
-						if(k2f_refresh_ajax && k2f_refresh_ajax.readyState!=0){
-							k2f_refresh_ajax.abort();
-							k2f_refresh_ajax=null;
-						}
+						k2f_page=p;
 						jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').css('visibility','visible');
-						// do the search request
-						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-limit','k2f-ign').replace('k2f-page','k2f-ign');
-						url+='&k2f-limit='+l+'&k2f-page='+k2f_pgnation_page+'&k2f-search='+encodeURIComponent(s);
-						k2f_refresh_ajax=k2f_refresh(url,function(){
+						return k2f_reload(el,function(){
 							jQuery(el).parents('.k2f-adminlist').find('.k2f-pgnation-throbber').css('visibility','hidden');
 						});
 					}
 					function k2f_search_submit(el){
-						var l=jQuery(el).parents('.k2f-adminlist').find('.k2f-page-limit').val()*1;
-						var s=jQuery(el).parents('.k2f-adminlist').find('.k2f-search-search').val();
-						// stop any previous searches and show throbber
-						if(k2f_refresh_ajax && k2f_refresh_ajax.readyState!=0){
-							k2f_refresh_ajax.abort();
-							k2f_refresh_ajax=null;
-						}
 						jQuery(el).parents('.k2f-adminlist').find('.k2f-search-throbber').show();
-						// do the search request
-						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-limit','k2f-ign').replace('k2f-page','k2f-ign');
-						url+='&k2f-limit='+l+'&k2f-page='+k2f_pgnation_page+'&k2f-search='+encodeURIComponent(s);
-						k2f_refresh_ajax=k2f_refresh(url,function(){
+						return k2f_reload(el,function(){
 							jQuery(el).parents('.k2f-adminlist').find('.k2f-search-throbber').hide();
 						});
-						return false; // hack to stop button from submitting form
 					}
 					function k2f_search_reset(el){
 						jQuery(el).parents('.k2f-adminlist').find('.k2f-search-search').val('');
@@ -352,8 +397,11 @@ url,
 						// compute some variables...
 						var l=jQuery('.k2f-page-limit').val()*1; // this is not threadsafe! (multiple tables)
 						var s=jQuery('.k2f-search-search').val(); // this is not threadsafe! (multiple tables)
-						var url=location.href.replace('k2f-search','k2f-ign').replace('k2f-limit','k2f-ign').replace('k2f-page','k2f-ign');
-						url+='&k2f-limit='+l+'&k2f-page='+k2f_pgnation_page+'&k2f-search='+encodeURIComponent(s);
+						var col=jQuery(el).parents('.k2f-adminlist').find('th.sorted:first');
+						var cnm=encodeURIComponent(col.find('input').val());
+						var url=location.href.replace('#','').replace('k2f-search','k2f-ign').replace('k2f-limit','k2f-ign').replace('k2f-page','k2f-ign').replace('k2f-scol','k2f-ign').replace('k2f-sord','k2f-ign');
+						url+='&k2f-limit='+l+'&k2f-page='+k2f_page+'&k2f-search='+encodeURIComponent(s); // search & pagination
+						url+='&k2f-scol='+cnm+"&k2f-sord="+(col.is('.asc') ? 'a' : 'd');   // sort column & sort order
 						// continue...
 						if(action!='refresh' && action!='close' && action!='cancel'){
 							var el=jQuery(elem).parents('form');
@@ -382,6 +430,32 @@ url,
 							if(action=='refresh')k2f_refresh(url);
 							jQuery.fancybox.close();
 						}
+					}
+					function k2f_reload(el,ondone){
+						var al=jQuery(el).parents('.k2f-adminlist');
+						var l=al.find('.k2f-page-limit').val()*1;
+						var s=al.find('.k2f-search-search').val();
+						var col=al.find('th.sorted:first');
+						var cnm=encodeURIComponent(col.find('input').val());
+						var fltrs='';
+						jQuery('#k2f-filters select').each(function(){
+							if(jQuery(this).find('option:selected').index()>0)
+								fltrs+='&'+encodeURIComponent(this.name)+'='+encodeURIComponent(this.value);
+						});
+						// stop any previous searches and show throbber
+						if(k2f_refresh_ajax && k2f_refresh_ajax.readyState!=0){
+							k2f_refresh_ajax.abort();
+							k2f_refresh_ajax=null;
+						}
+						// do the search request
+						var url=location.href.replace('#','').replace('k2f-search','k2f-ign').replace('k2f-limit','k2f-ign').replace('k2f-page','k2f-ign').replace('k2f-scol','k2f-ign').replace('k2f-sord','k2f-ign');
+						url+='&k2f-limit='+l+'&k2f-page='+k2f_page+'&k2f-search='+encodeURIComponent(s); // search & pagination
+						url+='&k2f-scol='+cnm+'&k2f-sord='+(col.is('.asc') ? 'a' : 'd')+fltrs;   // sort column & sort order & filters
+						k2f_refresh_ajax=k2f_refresh(url,function(){
+							// call callback if any
+							if(typeof ondone=='function')ondone();
+						});
+						return false; // hack to stop button from submitting form
 					}
 					function k2f_cancel(){
 						if(k2fajax && k2fajax.readyState!=0){
@@ -447,27 +521,29 @@ url,
 					}
 					function k2f_action(id,tbl){
 						var act=jQuery('#k2f-al-ba-'+id).val();
-						/*var res=window['k2f-options-'+tbl].indexOf('nopopup:'+act)!=-1
-							? k2f_applyNP(act,tbl) :*/ k2f_apply(act,tbl);
+						var res=window['k2f-options-'+tbl].indexOf('nopopup:'+act)!=-1
+							? k2f_applyNP(act,tbl) : k2f_apply(act,tbl);
 						jQuery('#k2f-al-ba-'+id).val('');
 						jQuery('#k2f-al-bb-'+id).attr('disabled',true);
 						return res;
 					}
-					function k2f_edit(link,id,action){
-						var tbl=jQuery(jQuery(link).parents('.k2f-adminlist')[0]).attr('id').replace('k2f-al-','')*1;
+					function k2f_edit(link,id,action,extra){
+						if(typeof extra=='undefined')extra='';
+						var tbl=jQuery(link).parents('.k2f-adminlist');
+						tbl = tbl.length ? jQuery(tbl[0]).attr('id').replace('k2f-al-','')*1 : 1;
 						var url=location.href;
 						if(url[url.length-1]=='#')url=url.substr(0,url.length-1);
 						url+='<?php // <- hash-in-url hotfix
 							echo (count($callback)==2) ? Ajax::url($callback[0],$callback[1],'&') : '&k2f-notajax';
-							?>&k2f-table='+tbl+'&k2f-action='+encodeURIComponent(action)+'&k2f-checked[]='+(id*1);
-						/*if(window['k2f-options-'+tbl].indexOf('nopopup:'+action)!=-1){
+							?>&k2f-table='+tbl+'&k2f-action='+encodeURIComponent(action)+'&k2f-checked[]='+(id*1)+extra;
+						if(window['k2f-options-'+tbl].indexOf('nopopup:'+action)!=-1){
 							jQuery('.k2f-adminlist').hide();
 							jQuery.post(url,function(data){
 								jQuery('#k2f-nopopup').html(data);
 								jQuery('#k2f-nopopup').show();
 							});
 							return false;
-						}else*/ return k2f_popup(url);
+						}else return k2f_popup(url);
 					}
 				</script><?php
 			}
@@ -500,7 +576,7 @@ url,
 		public function popup_begin($title,$hint,$width=0,$height=0,$callback=array()){
 			self::$hints[]=$hint;
 			?><div style="background:#444; color:#CACACA; font-size:14px; padding:6px;"><?php echo $title; ?></div>
-			<form id="<?php echo Security::snohtml($id); ?>" class="type-form" action="<?php echo Security::snohtml($_SERVER['REQUEST_URI']);
+			<form id="<?php //echo Security::snohtml($id); ?>" class="type-form" action="<?php echo Security::snohtml($_SERVER['REQUEST_URI']);
 //				echo '?page='.Security::snohtml(urlencode($_REQUEST['page'])).((count($callback)==2)
 //						? Ajax::url($callback[0],$callback[1],'&') : '&k2f-notajax').'&k2f-table='.(int)$_REQUEST['k2f-table'];
 				?>" method="post" style="display:inline-block; width:630px; margin:8px 16px;"><?php
@@ -620,7 +696,7 @@ url,
 		public function admin_add_submenu($parent,$name,$text,$icons,$handler){
 			self::$menus['admin']['func'][]=$handler;
 			self::$menus['admin']['menu'][$parent]['items'][]=array('name'=>$name,'text'=>$text,'icons'=>$icons,'handler'=>$handler,'items'=>array());
-			return array($parent,count(self::$menus['admin']['menu'][$parent]['items']));
+			return array($parent,count(self::$menus['admin']['menu'][$parent]['items'])-1,'admin');
 		}
 		public function client_add_menu($name,$text,$icons,$handler){
 			self::$menus['client']['func'][]=$handler;
@@ -629,7 +705,7 @@ url,
 		public function client_add_submenu($parent,$name,$text,$icons,$handler){
 			self::$menus['client']['func'][]=$handler;
 			self::$menus['client']['menu'][$parent]['items'][]=array('name'=>$name,'text'=>$text,'icons'=>$icons,'handler'=>$handler,'items'=>array());
-			return array($parent,count(self::$menus['client']['menu'][$parent]['items']));
+			return array($parent,count(self::$menus['client']['menu'][$parent]['items'])-1,'client');
 		}
 		public function guest_add_menu($name,$text,$icons,$handler){
 			self::$menus['guest']['func'][]=$handler;
@@ -638,10 +714,11 @@ url,
 		public function guest_add_submenu($parent,$name,$text,$icons,$handler){
 			self::$menus['guest']['func'][]=$handler;
 			self::$menus['guest']['menu'][$parent]['items'][]=array('name'=>$name,'text'=>$text,'icons'=>$icons,'handler'=>$handler,'items'=>array());
-			return array($parent,count(self::$menus['guest']['menu'][$parent]['items']));
+			return array($parent,count(self::$menus['guest']['menu'][$parent]['items'])-1,'guest');
 		}
 		public function url_to_menu($menu,$args=array()){
-			$handler=is_array($menu) ? self::$menus['client']['menu'][$menu[0]]['items'][$menu[0]]['handler'] : self::$menus['admin']['menu'][$menu]['handler'];
+			// TODO The second expression is hardcoded against admin - not good.
+			$handler=is_array($menu) ? self::$menus[$menu[2]]['menu'][$menu[0]]['items'][$menu[1]]['handler'] : self::$menus['admin']['menu'][$menu]['handler'];
 			foreach($args as $k=>$v)$args[$k]='&'.$k.'='.urlencode($v);
 			return 'index.php?option=com_k2f&k2facm='.urlencode(implode('.',$handler)).implode('',$args);
 		}
@@ -716,7 +793,6 @@ url,
 		if(CmsHost::cms()->is_guest())Events::call('on_guest_menu');
 		// header stuff
 		ob_start();
-		Events::call('on_head');
 		//// TEMPORARY HACK--> ////
 		if(!isset($_REQUEST['option']) && !isset($_REQUEST['k2facm'])){
 			?><script type="text/javascript">window.onload=function(){var div=null;var cpn=document.getElementById('cpanel');<?php
@@ -736,6 +812,7 @@ url,
 			<link rel="stylesheet" type="text/css" href="<?php echo Security::snohtml(Ajax::url('CmsHost_joomla','_jquery_fancy_box')); ?>&amp;name=jquery.fancybox-1.3.4.pack.css" media="screen" /><?php
 		}
 		?><script type="text/javascript">jQuery.noConflict();</script><?php
+		Events::call('on_head');
 		//// <--TEMPORARY HACK ////
 		$html=ob_get_clean();
 		$doc=&JFactory::getDocument();
@@ -769,12 +846,17 @@ url,
 				var ksbo=submitbutton;
 				submitbutton=function(task){
 					var cbs=[];
-					jQuery.each(jQuery('input:checked'),function(i,e){ if(jQuery(e).val()!='')cbs.push('k2f-checked[]='+jQuery(e).val()); });
-					k2f_popup((<?php echo @json_encode(Ajax::url('thek2fclass','thek2fmethod')); ?>)
+					jQuery.each(jQuery('input:checked'),function(i,e){
+						if(jQuery(e).val()!='')
+							cbs.push('k2f-checked[]='+jQuery(e).val());
+					});
+					k2f_popup(
+						(<?php echo @json_encode(Ajax::url('thek2fclass','thek2fmethod')); ?>)
 						.replace('thek2fclass',encodeURIComponent(jQuery('#k2f-cls').val()))
 						.replace('thek2fmethod',encodeURIComponent(jQuery('#k2f-mtd').val()))
-						+'&k2f-table=1&k2f-action='+encodeURIComponent(task)+'&'+cbs.join('&')+'&random='+Math.random());
-				}
+						+'&k2f-table=1&k2f-action='+encodeURIComponent(task)+'&'+cbs.join('&')+'&random='+Math.random()
+					);
+				};
 			</script><?php
 			// BEGIN joomla hack to make wysiwyg editors work
 			ob_start(); JFactory::getEditor()->display('k2fdummy','','10','10','20','20',true,array()); ob_get_clean();
