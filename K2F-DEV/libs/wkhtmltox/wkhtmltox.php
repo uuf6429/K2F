@@ -167,6 +167,9 @@
 				trigger_error('WKHTMLTOX error: program returned empty result.');
 			// handle execution return codes (only 0 means success).
 			switch($this->result['return']){
+				case 139:
+					trigger_error('WKHTMLTOX system error 139: access violation (SEGFAULT), program terminated.');
+					return false;
 				case 126:
 					trigger_error('WKHTMLTOX system error 126: target file not executable (execution failure).');
 					return false;
@@ -406,12 +409,13 @@
 				case self::OUT_EMBED:
 					if(!@headers_sent()){
 						header('Content-Type: '.MimeTypes::get_extension_mimetype($file));
-						header('Cache-Control: public, must-revalidate, max-age=0'); // HTTP/1.1
-						header('Pragma: public');
-						header('Expires: Sat, 26 Jul 1997 05:00:00 GMT'); // Date in the past
-						header('Last-Modified: '.@gmdate('D, d M Y H:i:s').' GMT');
+//						header('Cache-Control: public, must-revalidate, max-age=0'); // HTTP/1.1
+//						header('Pragma: public');
+//						header('Expires: '.date('D, j M Y 01:00:00 GMT',strtotime('+5 years')));
+//						header('Last-Modified: '.@gmdate('D, d M Y H:i:s').' GMT');
 						header('Content-Length: '.strlen($this->result['stdout']));
 						header('Content-Disposition: inline; filename="'.basename($file).'";');
+						header('Accept-Ranges: bytes');
 						echo $this->result['stdout'];
 						return true;
 					}else{
@@ -772,14 +776,14 @@
 		 * @param string $size The size as a string (eg: 10mm).
 		 */
 		public function set_header_height($size=null){
-			$this->header_height=$source;
+			$this->header_height=$size;
 		}
 		/**
 		 * Set the footer's height.
 		 * @param string $size The size as a string (eg: 10mm).
 		 */
 		public function set_footer_height($size=null){
-			$this->footer_height=$source;
+			$this->footer_height=$size;
 		}
 		/**
 		 * Return image with various options.
