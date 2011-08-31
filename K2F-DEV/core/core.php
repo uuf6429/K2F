@@ -49,6 +49,14 @@
 	 * @var string Null character; actually PHP has it's own.
 	 */
 	defined('NULL') or define('NULL',chr(0));
+	/**
+	 * @var string Escape character.
+	 */
+	defined('ESC') or define('ESC',chr(27));
+	/**
+	 * @var string ANSI escape sequence characters.
+	 */
+	defined('ESCSEQ') or define('ESCSEQ',chr(27).chr(91));
 
 	/**
 	 * Date timezone warning hotfix
@@ -85,7 +93,7 @@
 	 * @return integer The modified value.
 	 */
 	function bit_set($val,$bit){
-		return bit_isset($val,$bit) ? $val : $val+'0x'.dechex(1<<($bit-1));
+		return bit_isset($val,$bit) ? $val : $val+('0x'.dechex(1<<($bit-1)));
 	}
 	/**
 	 * Turns a specific bit in a value to off.
@@ -116,7 +124,57 @@
 		for($j=$len; $j>0; $j--)$ret.=bit_isset($val,$j) ? '1' : '0';
 		return $ret;
 	}
-
+	/**
+	 * Returns the topmost bit of a value.
+	 * @param integer $val Value to check.
+	 * @return integer The index of the topmost value. Eg, for 5, it is 3rd (=4).
+	 */
+	function bit_high($val){
+		return is_infinite($res=floor(log(abs($val), 2) + 1)) ? 0 : $res;
+	}
+	/**
+	 * Returns the lowest bit of a value.
+	 * @param integer $val Value to check.
+	 * @return integer The index of the topmost value. Eg, for 5, it is 3rd (=4).
+	 */
+	function bit_low($val){
+		return ($pos=strpos(strrev(base_convert($val,10,2)),'1'))===false ? 0 : $pos+1;
+	}
+	/**
+	 * Combine a value with a set of flags.
+	 * @param integer $val The original value.
+	 * @param integer $flags The flags to add to value.
+	 * @return integer The resulting value.
+	 */
+		function bit_flag_set($val,$flags){
+		foreach(str_split(strrev(base_convert($flags,10,2)),1) as $bit=>$state)
+			if($state)$val=bit_set($val,$bit+1);
+		return $val;
+	}
+	/**
+	 * Remove specific flags from a value.
+	 * @param integer $val The original value.
+	 * @param integer $flags The flags to remove from value.
+	 * @return integer The resulting value.
+	 */
+	function bit_flag_unset($val,$flags){
+		foreach(str_split(strrev(base_convert($flags,10,2)),1) as $bit=>$state)
+			if($state)$val=bit_unset($val,$bit+1);
+		return $val;
+	}
+	/**
+	 * Ensures a set of flags exist in a value.
+	 * @param integer $val The original value.
+	 * @param integer $flags The flags to check in value.
+	 * @return boolean True if and only if all $flags exist in $val. Note: If $flags is zero, the function returns success.
+	 */
+	function bit_flag_isset($val,$flags){
+		$res=true;
+		foreach(str_split(strrev(base_convert($flags,10,2)),1) as $bit=>$state)
+			if($state)$res&=bit_isset($val,$bit+1);
+		return $res;
+	}
+	
 	/**
 	 * Constructs a GET url given certain details.
 	 * @param string $page Path and file name relative to REL_WWW.
@@ -147,12 +205,14 @@
 		}
 	}
 
+	$GLOBALS['K2F-XLOG-LOG']=array();
 	/**
 	 * Debug log rendering function. The debug log goes according to DEBUG_MODE variable.
 	 * @param mixed Any number of arguments to be included in the log.
 	 */
 	function xlog(){
 		$args=func_get_args();
+		$GLOBALS['K2F-XLOG-LOG'][]=$args;
 		echo call_user_func_array('xlogr',$args);
 	}
 
@@ -310,6 +370,15 @@
 	function die_r(){
 		$arg=func_num_args()==1 ? func_get_arg(0) : func_get_args();
 		die('<pre>'.htmlspecialchars(print_r($arg,true),ENT_QUOTES).'</pre>');
+	}
+
+	/**
+	 * This is a merge of echo and print_r.
+	 * It can accept any number of arguments.
+	 */
+	function echo_r(){
+		$arg=func_num_args()==1 ? func_get_arg(0) : func_get_args();
+		echo('<pre>'.htmlspecialchars(print_r($arg,true),ENT_QUOTES).'</pre>');
 	}
 	
 	/**

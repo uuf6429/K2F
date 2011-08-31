@@ -6,6 +6,7 @@
 	 * @author Christian Sciberras
 	 * @version 01/11/2010 - Initial implementation.
 	 *          24/02/2011 - Fixed bug in get_class_parent() concerning get_parent_class() returnign false for non-parented classes.
+	 *          06/07/2011 - Added function get_class_parents().
 	 */
 
 	/**
@@ -56,7 +57,7 @@
 	function get_class_ancestors($class){
 		if(is_object($class))$class=get_class($class);
 		$classes=array();
-		while($class=get_class_parent($class))
+		while(($class=get_class_parent($class))!=null)
 			$classes[]=$class;
 		return $classes;
 	}
@@ -106,6 +107,38 @@
 		}elseif(is_object($class))
 			return $class->$prop;
 		return null;
+	}
+
+	/**
+	 * Returns a list of classes parent to this one, but excluding it.
+	 * @param string|object $class The class to get its parents.
+	 * @param boolean $cached Set to false to disable caching.
+	 * @return array List of classes, with the leftmost being the root class.
+	 * @todo Make use of SPL's class_parents()
+	 */
+	function get_class_parents($class,$cached=true){
+		static $cache=array();
+		if(!isset($cache[$class]) || !$cached){
+			$cache[$class]=array(); $parent=$class;
+			while(($parent=get_class_parent($parent))!='')
+				$cache[$class][]=$parent;
+			$cache[$class]=array_reverse($cache[$class],false);
+		}
+		return $cache[$class];
+	}
+
+	/**
+	 * Returns whether a class extends another one or not.
+	 * @param string $class The class to check.
+	 * @param string $parent The parent class to look for.
+	 * @param boolean $cached Whether to allow caching or not.
+	 * @return boolean True if it extends a parent class (or is the class), or false otherwise.
+	 */
+	function class_extends($class,$parent,$cached=true){
+		static $cache=array();
+		if(!isset($cache[$class]) || !$cached)
+			$cache[$class]=get_class_parents($class);
+		return ($class==$parent) || in_array($parent,$cache[$class]);
 	}
 
 ?>

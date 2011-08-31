@@ -78,6 +78,7 @@
 		 * @internal
 		 */
 		public static function handle_errors($errno,$errstr,$errfile,$errline){
+			if($errstr=='HiddenDummyError')return true;
 			// handle error message
 			self::show_error($errno,$errstr,$errfile,$errline);
 			// return handled status
@@ -165,13 +166,13 @@
 		}
 	}
 
-	// hanlde critical errors...bad hack :/
+	// handle critical errors...bad hack :/
 	if(!function_exists('k2f_error_handler')){
 		function k2f_error_handler($output){
 			if(Errors::$SHOWING_ERRORS){
 				$error=error_get_last();
 				if(($error!==null) && ($error['message']!='HiddenDummyError')){
-					$is_fatal=!in_array($errno,Errors::$NON_FATAL_CODES);
+					$is_fatal=!in_array($error['type'],Errors::$NON_FATAL_CODES);
 					$output.=xlogr(($is_fatal ? 'Error' : 'Warning').':',$error['type'],strip_tags($error['message']),$error['file'],$error['line'],debug_backtrace(true));
 					@trigger_error('HiddenDummyError');
 				}

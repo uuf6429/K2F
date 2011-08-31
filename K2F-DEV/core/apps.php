@@ -84,18 +84,19 @@
 		/**
 		 * Perform some initialization stuff.
 		 */
-		final public function  __construct(){
+		final public function __construct(){
 			// Bind the current $this's methods to event stack.
 			Events::add('on_admin_menu',array($this,'on_admin_menu'));
 			Events::add('on_registered_menu',array($this,'on_registered_menu'));
 			Events::add('on_guest_menu',array($this,'on_guest_menu'));
+			// TODO: Add on_head to events
 			// Make this the default application instance.
 			self::$instances[get_class_name()]=$this;
 		}
 		/**
 		 * Perform some final cleanup.
 		 */
-		final public function   __destruct(){
+		final public function __destruct(){
 			// Remove all events which bind to $this.
 			Events::remove('',$this);
 		}

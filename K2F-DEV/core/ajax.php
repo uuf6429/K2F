@@ -104,8 +104,9 @@
 				$mtd=isset($_REQUEST['mtd']) ? $_REQUEST['mtd'] : '';
 				$result=self::exists($cls,$mtd)
 					? self::call($cls,$mtd) : $result=array('success'=>false,'reason'=>'inexistent '.(!isset(self::$callable[$cls])?'class':'method'));
-				if($return)return @json_encode($result);
-				echo @json_encode($result);
+				$data=@json_encode($result);
+				if($return)return $data;
+				echo $data;
 			}
 		}
 		/**
@@ -139,6 +140,10 @@
 			$result=self::handle(true);
 			if(function_exists('header_remove'))header_remove('Location');		// hotfix for location getting set for some dumb reason
 			header('HTTP/1.0 200 OK',true,200);									// hotfix for location and http://bugs.php.net/bug.php?id=25044
+			header('Cache-Control: no-cache, must-revalidate');					// MSIE cache hotfix
+			header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');					// MSIE cache hotfix
+			header('Content-type: application/json');							// correct mime hotfix
+			header('Content-Length: '.strlen($result));							// for download progress prediction
 			if(Ajax::is_on())die($result);
 		}
 		/**
@@ -150,6 +155,7 @@
 	}
 
 	// if ajax flag is set, process ajax request after booting
-	if(Ajax::is_on())Events::add('on_after_boot',array('Ajax','render'));
+	//if(Ajax::is_on())Events::add('on_after_boot',array('Ajax','render'));
+	if(Ajax::is_on())register_shutdown_function(array('Ajax','render'));
 
 ?>

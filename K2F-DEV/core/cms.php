@@ -55,7 +55,7 @@
 		 * @param string $html Some html code displayed inside the link.
 		 * @param string$action The desired action (edit, delete, etc).
 		 */
-		public static function fire_action($id,$html,$action){              //           .- speaking of paranoid ;-)
+		public static function fire_action($id,$html,$action){              //                                                                  .- speaking of paranoid ;-)
 			return '<a href="javascript:;" style="white-space:nowrap;" onclick="k2f_edit(this,'.(int)$id.','.Security::snohtml(@json_encode($action)).');">'.$html.'</a>';
 		}
 		/**
@@ -120,6 +120,7 @@
 		 * @param array $rows Array of row objects, the keys are what the system works on, use real ids even if they are strings.
 		 * @param string $colid The column name to be used as a unique key (it must exist as a property of each object in $rows).
 		 * @param array $columns Array of strings/columns (key is the row property and value is the html).
+		 *                       The value may be an array in the format of: array(html,style='',orderable=false,filter_items=array(item_value=>item_name))
 		 * @param array $options Array of desired options:<br>
 		 *     multiselect  - Each row can be selected at the same time (checkbox).
 		 *     singleselect - Only one row can be selected by itself (radiobutton).
@@ -292,6 +293,20 @@
 					<td><h2><?php echo Security::snohtml($title); ?></h2></td>
 					<td align="right"><?php foreach($actions as $action)echo '<input type="button" value="'.Security::snohtml($action).'">'; ?></td>
 				</tr></table><?php
+		}
+		/**
+		 * Add a custom button to adminlist.
+		 * @param string $text Button text.
+		 * @param AppIcon $icon Button icon.
+		 * @param string $action The action to call.
+		 * @param string $selection Any one of the following values used to disable button: any, single, multiple, all, none
+		 * @param integer $weight A value used to position button. Negative values for left, positive values for right.
+		 * @todo Functioanlity still under construction.
+		 */
+		public function adminlist_button($text,$icon,$action,$selection='any',$weight=0){
+			?><script type="text/javascript"><?php
+			echo 'jQuery(".k2f-action-btns").'.($weight>0 ? 'append' : 'prepend').'('.json_encode('<button type="button" value="'.Security::snohtml($action).'">'.Security::snohtml($text).'</button>').');';
+			?></script><?php
 		}
 		/**
 		 * Finalizes page rendering.

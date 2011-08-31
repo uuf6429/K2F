@@ -110,10 +110,19 @@
 		 * @return boolean Whether it was successful or not.
 		 */
 		public function raw_query($query){
-			xlog('Warnining: You should not run raw queries since they might not be portable.',$query,debug_backtrace());
+			xlog('Warning: You should not run raw queries since they might not be portable.',$query,debug_backtrace());
 			$this->last_query=$query;
 			$this->last_result=null;
 			return $this->last_result ? true : false;
+		}
+
+		/**
+		 * Returns a database-dependent resultset for the previous query.
+		 * @return array List of result objects from previous query.
+		 */
+		public function raw_result(){
+			xlog('Warning: You should not use raw results since they might not be portable.',$query,debug_backtrace());
+			return array();
 		}
 
 		/// DATABASE MANAGEMENT ///
@@ -212,6 +221,14 @@
 		 * @return integer Number of affected rows.
 		 */
 		public function rows_count($table,$condition=''){ return 0; }
+		/**
+		 * Delete a set of rows from DB given their data and an identifying row.
+		 * @param string $table The table to remove rows from.
+		 * @param array|object $objects An array of objects or a single object which must at least have a single property named $unique_prop.
+		 * @param array|string $unique_props An array of keys or a single one, used to identify what to delete. Each must exist inside $objects as a property.
+		 * @return array Array of (boolean) success statuses for each deleted row.
+		 */
+		public function rows_delete($table,$objects=array(),$unique_props='id'){ return array_pad(array(), is_array($objects) ? count($objects) : 1, false); }
 
 		/// COLUMN MANAGEMENT ///
 
@@ -257,6 +274,19 @@
 		 * @return string The error message (or empty string if none occured).
 		 */
 		public function error_msg(){ return 'Abstract database interface being used'; }
+		
+		// NON-OVERIDEABLES ///
+	
+		/**
+		 * Returns the last executed query executed.
+		 * @return string SQL query.
+		 */
+		public function last_query(){ return $this->last_query; }
+		/**
+		 * Returns the last used database name.
+		 * @return string Current database name.
+		 */
+		public function last_database(){ return $this->last_dbname; }
 	}
 
 	if(CFG::get('DB_TYPE')!='' && CFG::get('DB_NAME')!=''){

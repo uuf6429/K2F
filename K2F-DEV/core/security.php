@@ -44,6 +44,9 @@
 	 *          31/12/2010 - Added $ignoreChars parameter to Security::filename().
 	 *          18/03/2011 - Method `stoident` should perform better now.
 	 *          07/04/2011 - Fixed method `stoident` to handle when something else than a string was passed.
+	 *          25/06/2011 - Fixed method `escape` to handle different data types better.
+	 *          25/06/2011 - Added method `escapeQuote` which escapes and adds double quotes to input. 
+	 *          16/08/2011 - Added method `removeHomoglyphs`, used to remove similarly-looking characters.
 	 */
 	class Security {
 		/**
@@ -81,10 +84,6 @@
 			'brackets'  => array('<','>','{','}','[',']'),
 			'quotes'    => array('`','\'','"')
 		);
-		/**
-		 * @var array Array of homoglyphs.
-		 */
-		protected static $hglchrs=array('I','1','l','0','O','rn','vv');
 		/**
 		 * Generates a random sequence of a given length of certain characters.
 		 * @param string $letters A comma-separated list of character (ranges):<br>
@@ -150,10 +149,20 @@
 			$charc=count($chars); $data='';
 			while(strlen($data)<$length && $charc>0)
 				$data=$nohomoglyphs
-					? str_replace(self::$hglchrs,'',$data.$chars[mt_rand(0,$charc-1)])
+					? self::removeHomoglyphs($data.$chars[mt_rand(0,$charc-1)])
 					: $data.$chars[mt_rand(0,$charc-1)];
 			// ensure token is at most $length characters long and return it
 			return substr($data,0,$length);
+		}
+		/**
+		 * Remove similar characters (homoglyphs).
+		 * @param string $text The original text.
+		 * @return string The new text.
+		 */
+		public static function removeHomoglyphs($text){
+			return str_replace(array(
+				'I','1','l','0','O','rn','vv'
+			), '', $text);
 		}
 		/**
 		 * Used to signal that an enumerated type (array or object) is being converted. Later on, the field is removed.
@@ -276,12 +285,48 @@
 		 * Escapes a value for use within a DB query.<br>
 		 * <b>WARNING</b> If the original value is of enumerable type, the index is NEVER escaped.
 		 * @param mixed $val Original value.
-		 * @return mixed The escaped value.
+		 * @return array|string The escaped value.
 		 */
 		public static function escape($val){
-			if(is_array($val))foreach($val as $k=>$v)$val[$k]=self::escape($v);
-			if(is_string($val))$val=mysql_real_escape_string($val);
-			return $val;
+			switch(gettype($val)){
+				case 'array': case 'object':
+					$val=(array)$val;
+					foreach($val as $k=>$v)
+						$val[$k]=self::escape($v);
+					return $val;
+				case 'string':
+					return mysql_real_escape_string($val);
+				case 'NULL':
+					return 'NULL';
+				case 'boolean':
+					return $val ? 'TRUE' : 'FALSE';
+				default:
+					return strval($val); 
+			}
+		}
+		/**
+		 * Similar tp escape(), but adds double quotes when necesary.<br>
+		 * <b>WARNING</b> If the original value is of enumerable type, the index is NEVER escaped.
+		 * @param mixed $val Original value.
+		 * @return array|string The escaped value.
+		 * @example Security::escapeQuote(array("Hi",45,true)); // array('"Hi"','45','1')
+		 */
+		public static function escapeQuote($val){
+			switch(gettype($val)){
+				case 'array': case 'object':
+					$val=(array)$val;
+					foreach($val as $k=>$v)
+						$val[$k]=self::escapeQuote($v);
+					return $val;
+				case 'string':
+					return '"'.self::escape($val).'"';
+				case 'NULL':
+					return 'NULL';
+				case 'boolean':
+					return $val ? 'TRUE' : 'FALSE';
+				default:
+					return strval($val); 
+			}
 		}
 		/**
 		 * Removes special characters from a file name, such as quotes, newlines, path delimiters...

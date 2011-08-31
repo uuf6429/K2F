@@ -181,6 +181,32 @@
 			}
 			return $display.$additional;
 		}
+		/**
+		 * Generates a simple & nice email template.
+		 * @param string $message Original email contents. Note that items may be put in <box> elements.
+		 * @param string $title The email title.
+		 * @return string Final message HTML.
+		 */
+		public static function template_basic($message,$title){
+			ob_start();
+			$rplc=array(
+				'<a '=>'<a style="color: #3F6C18;" ',
+				'<box>' => '<div style="border:1px solid #A8A8A8;margin:4px 0;"><div style="border:1px solid #FFF;background:#E0E0E0;color:#575757;font-size:10px;padding:8px;">',
+				'</box>' => '</div></div>'
+			);
+			?><html>
+				<head>
+					<title><?php echo Security::snohtml($title); ?></title>
+				</head><body>
+					<div align="center" style="background: #D2D1D0; font-family: Tahoma; font-size: 14px; padding: 32px; margin: 0;">
+						<div align="left" style="display: inline-block; background: #F4F4F4; border: 1px solid #BBBBBB; padding:16px;">
+							<?php echo str_replace(array_keys($rplc),array_values($rplc),$message); ?>
+						</div>
+					</div>
+				</body>
+			</html><?php
+			return ob_get_clean();
+		}
 	}
 	
 ?>
