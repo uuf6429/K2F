@@ -6,7 +6,7 @@
 	 * @author Christian Sciberras
 	 * @version 28/08/2010
 	 */
-	 
+
 	/**
 	 * By default, we're in Malta! How's that for some patriotism, eh?
 	 */
@@ -32,7 +32,6 @@
 		}
 		return $ret;
 	}
-	
 	/**
 	 * Utility function to return the common part between two strings (from right).
 	 * @param string $str1 The first string.
@@ -58,7 +57,7 @@
 		}
 		return (ceil($size*100)/100).' '.$type[$i];
 	}
-	
+
 	CFG::set(array(
 		/**
 		 * The salt is a 32 byte (characters) used in several security mechanisms
@@ -128,15 +127,14 @@
 	/**
 	 * Server name (eg: test.com or www.test.com or www3.test.com or sub.test.com).
 	 */
-	CFG::set('SITE_NAME', $_SERVER['SERVER_NAME']);
-
+	CFG::set('SITE_NAME', isset($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : php_uname('n'));
 
 	/**
 	 * Absolute filesystem path to web root install (aka docroot).
 	 * @example C:/wamp/www/ OR /home/visitgoz/public_html/
 	 */
-	if(strpos($_SERVER['SCRIPT_FILENAME'],$_SERVER['DOCUMENT_ROOT'])===false){
-		// how it works on reseller accounts...
+	if(isset($argc) || strpos($_SERVER['SCRIPT_FILENAME'],$_SERVER['DOCUMENT_ROOT'])===false){
+		// how it works on reseller accounts or PHP through CLI...
 		CFG::set('ABS_WWW', str_replace($tmpseps,DIRECTORY_SEPARATOR,str_common(getcwd(),__FILE__)));
 	}else{
 		// how it normally works...
@@ -153,10 +151,14 @@
 	 * K2F path relative to web root.
 	 * @example /K2F/
 	 */
-	if(strpos($_SERVER['SCRIPT_FILENAME'],$_SERVER['DOCUMENT_ROOT'])===false){
-		// how it works on reseller accounts... (reflex action: "aw god, what the heck is that?!?")
-		// oh, and a little "good luck" to any future maintainer of that code ;)
-		CFG::set('REL_K2F', str_replace(array('//','\\'),'/',str_replace(str_rcommon($_SERVER['SCRIPT_FILENAME'],$_SERVER['SCRIPT_NAME']),'',$_SERVER['SCRIPT_NAME']).str_replace(CFG::get('ABS_WWW'),'/',CFG::get('ABS_K2F'))));
+	if(isset($argc) || strpos($_SERVER['SCRIPT_FILENAME'],$_SERVER['DOCUMENT_ROOT'])===false){
+		if(isset($argc)){
+			CFG::set('REL_K2F', '/'); // FIXME: Does this actualy work?
+		}else{
+			// how it works on reseller accounts... (reflex action: "aw god, what the heck is that?!?")
+			// oh, and a little "good luck" to any future maintainer of that code ;)
+			CFG::set('REL_K2F', str_replace(array('//','\\'),'/',str_replace(str_rcommon($_SERVER['SCRIPT_FILENAME'],$_SERVER['SCRIPT_NAME']),'',$_SERVER['SCRIPT_NAME']).str_replace(CFG::get('ABS_WWW'),'/',CFG::get('ABS_K2F'))));
+		}
 	}else{
 		// how it normally works...
 		CFG::set('REL_K2F', str_replace(array('//','\\'),'/',str_replace(CFG::get('ABS_WWW'),'/',CFG::get('ABS_K2F'))));
@@ -165,8 +167,8 @@
 	/**
 	 * Current file path relative to web root.
 	 * <br>This is the currently executed, "main" file.
-	 * @example C:/wamp/www/ OR /home/visitgoz/public_html/
+	 * @example /K2F/ OR /
 	 */
-	CFG::set('REL_WWW', str_replace('//','/',dirname($_SERVER['PHP_SELF']).'/'));
+	CFG::set('REL_WWW', str_replace(array('\\','//'),'/',dirname($_SERVER['PHP_SELF']).'/'));
 
 ?>

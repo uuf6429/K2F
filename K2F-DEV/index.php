@@ -1,5 +1,50 @@
 <?php ## REMOVE FILE FROM PRODUCTION SERVER ##
 
+	function aslog($where){
+		static $last=0; static $init=false; $now=time();
+		if(!$init){
+			?><script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js" type="text/javascript"></script>
+			<script type="text/javascript">
+				function chk(el){
+					var btn=jQuery(el);
+					if(btn.text().indexOf('[+]')!=-1){
+						btn.text(btn.text().replace('[+]','[-]'));
+						btn.next().slideDown();
+					}else{
+						btn.text(btn.text().replace('[-]','[+]'));
+						btn.next().slideUp();
+					}
+				}
+			</script><style type="text/css">
+				.chk {
+					font: 12px 'Lucida Console'; margin: 8px 0;
+				}
+				.chk span {
+					color: #0AF;
+					cursor: pointer;
+				}
+				.chk div div {
+					display:none;
+					padding: 2px 2px 2px 16px;
+					border-left: 2px solid #DFDFDF;
+					background: #F0F0F0;
+				}
+				.chk div pre {
+					margin: 0;
+					padding: 0;
+				}
+			</style><?php
+			echo '<div class="chk">';
+			$init=true;
+		}
+		?><div style="<?php if($last && $last+1<$now)echo 'color:red;'; ?>"><?php
+		echo date('H:i:s',$now).' - '.str_replace(' ','&nbsp;',$where).' <span onclick="chk(this)">[+]</span><div>';
+			$fa=func_get_args(); array_shift($fa); echo_r($fa);
+		echo '</div>';
+		?></div><?php
+		$last=$now;
+	};
+
 	if(isset($_REQUEST['file'])){ // small hack to store data without a dedicated file
 		switch($_REQUEST['file']){
 			case 'throbber':
@@ -39,8 +84,10 @@
 	 */
 
 	set_time_limit(0);
-	ob_implicit_flush(true);
-	if(ob_get_level()!=0)ob_end_flush();
+	if(!isset($_REQUEST['test'])){
+		ob_implicit_flush(true);
+		if(ob_get_level()!=0)ob_end_flush();
+	}else ob_start();
 
 ?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
@@ -48,13 +95,13 @@
 		<link rel="shortcut icon" type="image/x-icon" href="?file=favicon"/>
 		<title>Kraken 2 Framework - K2F Preview Screen</title>
 		<script type="text/javascript">
-			var mycon={
+			var k2fcon={
 				"apcon": typeof console!='undefined' && typeof console.log.apply!='undefined', // IE doesn't support console.log.apply :(
-				"log":   function(){ info.apply(window,arguments);  if(mycon.apcon)console.log.apply(console,arguments);  },
-				"info":  function(){ info.apply(window,arguments);  if(mycon.apcon)console.info.apply(console,arguments); },
-				"warn":  function(){ warn.apply(window,arguments);  if(mycon.apcon)console.warn.apply(console,arguments); },
-				"error": function(){ error.apply(window,arguments); if(mycon.apcon)console.error.apply(console,arguments);},
-				"debug": function(){ debug.apply(window,arguments); if(mycon.apcon)console.debug.apply(console,arguments);}
+				"log":   function(){ info.apply(window,arguments);  if(k2fcon.apcon)console.log.apply(console,arguments);  },
+				"info":  function(){ info.apply(window,arguments);  if(k2fcon.apcon)console.info.apply(console,arguments); },
+				"warn":  function(){ warn.apply(window,arguments);  if(k2fcon.apcon)console.warn.apply(console,arguments); },
+				"error": function(){ error.apply(window,arguments); if(k2fcon.apcon)console.error.apply(console,arguments);},
+				"debug": function(){ debug.apply(window,arguments); if(k2fcon.apcon)console.debug.apply(console,arguments);}
 			};
 		</script><style type="text/css">
 			html, body {
@@ -161,7 +208,7 @@
 		<?php } ?>
 
 		<div id="srvTestsNotice">
-			<b>Notice:</b> You can also run the following QA / reliability test scripts: <select id="tests-list" onchange="run_test(this.value);"><option value="" selected>No thanks!</option><?php
+			<b>Notice:</b> You can also run the following QA / reliability test scripts: <select id="tests-list" onchange="run_test(this.value);"><option value="" selected="selected">No thanks!</option><?php
 				foreach(glob('tests/*.php') as $file)
 					echo '<option value="'.htmlspecialchars(basename($file),ENT_QUOTES).'">'.htmlspecialchars(ucwords(str_replace(array('-','.php','_'),' ',basename($file))),ENT_QUOTES).'</option>';
 			?></select><script type="text/javascript">
@@ -186,15 +233,15 @@
 
 				?><div id="fvlogger"><!----></div>
 
-				<script type="text/javascript">mycon.log('Initializing...');</script><?php
+				<script type="text/javascript">k2fcon.log('Initializing...');</script><?php
 					if(isset($_REQUEST['test']))$GLOBALS['K2F_AUTOCONF']=array('DEBUG_VERBOSE'=>false);
 					require_once('boot.php');
 					if(isset($_REQUEST['test'])){
 						CFG::set('DEBUG_VERBOSE',true);
-						?><script type="text/javascript">mycon.log('--- TESTING ---');</script><?php
+						?><script type="text/javascript">k2fcon.log('--- TESTING ---');</script><?php
 						require_once('tests/'.Security::filename($_REQUEST['test']).'.php');
 					}
-				?><script type="text/javascript">mycon.log('Finished!');</script><?php
+				?><script type="text/javascript">k2fcon.log('Finished!');</script><?php
 
 			}
 
