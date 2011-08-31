@@ -5,6 +5,7 @@
 	 * @copyright 2010 Covac Software
 	 * @author Christian Sciberras
 	 * @version 28/08/2010
+	 *          03/06/2011
 	 */
 	class Cookies {
 		/**
@@ -15,8 +16,10 @@
 		 * @param string $time Cookie time to live date (set to 0 for session cookie).
 		 */
 		public static function set($name,$value='',$time=0){
-			// the domain is set in a way to fix development on localhost
-			$domain=$_SERVER['SERVER_ADDR']=='127.0.0.1' ? false : '.'.$_SERVER['SERVER_NAME'];
+			// the domain is set in a way to fix development on localhost or via IP
+			$is_lcl = $_SERVER['SERVER_ADDR']=='127.0.0.1';
+			$is_dom = $_SERVER['SERVER_ADDR']==$_SERVER['SERVER_NAME'];
+			$domain = ($is_lcl || $is_dom) ? false : '.'.$_SERVER['SERVER_NAME'];
 			if(!headers_sent() && setcookie($name,$value,$time,'/',$domain,CFG::get('SSL_MODE'))){
 				if($time<0){ // clear
 					unset($_COOKIE[$name]);

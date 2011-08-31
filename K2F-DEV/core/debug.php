@@ -26,10 +26,10 @@
 		if(class_exists('ReflectionClass')){
 			$rc=new ReflectionClass($obj);
 			return $rc->implementsInterface($cls);
-		}elseif(PHP_MAJOR_VERSION>4){
-			return eval('return $obj instanceof strtolower($cls);'); // ugly ugly hack!
 		}elseif(function_exists('is_a')){
 			return is_a($obj,strtolower($cls));
+		}elseif(PHP_MAJOR_VERSION>4){
+			return eval('return $obj instanceof strtolower($cls);'); // ugly ugly hack!
 		}
 		return false;
 	}
@@ -41,5 +41,16 @@
 	}
 	if(CFG::get('DEBUG_VERBOSE'))
 		register_shutdown_function('k2f_do_debug');
+
+	class AssertException extends Exception { }
+
+	class Debug {
+		public static function assert($check, $level=E_WARNING){
+			if(!$check){
+				$trace=debug_backtrace(); $trace=array_shift($trace); list($file,$line)=array_values($trace);
+				throw new AssertException("An assertion failed ($file:$line).", E_WARNING);
+			}
+		}
+	}
 
 ?>
