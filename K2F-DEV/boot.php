@@ -11,7 +11,7 @@
 	/**
 	 * @var string Used to check if files were loaded from K2F or not as well as K2F version.
 	 */
-	define('K2F','2.3.0d');
+	define('K2F','2.3.45d');
 
 	/**
 	 * This function is to replace PHP's extremely buggy realpath().
