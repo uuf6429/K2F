@@ -1,5 +1,5 @@
 <?php
-	
+
 	/**
 	 * This is the bootloader for K2F. In order to use K2F in your system, just include this file.
 	 * @copyright 2010 Covac Software
